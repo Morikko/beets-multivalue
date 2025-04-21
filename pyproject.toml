@@ -9,10 +9,10 @@ build-backend = "hatchling.build"
 packages = ["beetsplug"]
 
 [project]
-name = "beets-virtual-multivalue"
+name = "beets-multivalue"
 version = "0.0.1"
 authors = [
-  { name="Eric MASSERAN", email="author@example.com" },
+  { name="Eric MASSERAN"},
 ]
 description = "A beet plugin to use multi values on strings."
 # readme = "README.md"

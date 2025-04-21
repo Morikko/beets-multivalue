@@ -12,7 +12,9 @@ class MultiCommand:
         self.multivalue_fields = multivalue_fields
 
     def get_command(self) -> Subcommand:
-        multi_command = Subcommand("multi", help="do something super")
+        multi_command = Subcommand(
+            "multivalue", help="Add/Remove multi values", aliases=("multi")
+        )
         multi_command.parser.add_option(
             "-m",
             "--move",
