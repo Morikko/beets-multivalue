@@ -8,8 +8,10 @@ from beets.util import functemplate
 
 class MultiCommand:
 
-    @classmethod
-    def get_command(cls) -> Subcommand:
+    def __init__(self, multivalue_fields: dict[str, str]):
+        self.multivalue_fields = multivalue_fields
+
+    def get_command(self) -> Subcommand:
         multi_command = Subcommand("multi", help="do something super")
         multi_command.parser.add_option(
             "-m",
@@ -53,34 +55,38 @@ class MultiCommand:
             help="when modifying albums, don't also change item data",
         )
 
-        multi_command.func = cls.multi
+        multi_command.func = self.multi
 
         return multi_command
 
-    @classmethod
-    def parse_args(cls, args) -> tuple[list, list, list]:
+    def parse_args(self, args) -> tuple[list, list, list]:
         query = []
         adds = []
         removes = []
         for arg in args:
             if "+=" in arg and ":" not in arg.split("+=", 1)[0]:
                 key, val = arg.split("+=", 1)
+                if key not in self.multivalue_fields:
+                    raise ValueError(f"{key} is not a multivalue field")
                 adds.append((key, val))
             elif "-=" in arg and ":" not in arg.split("-=", 1)[0]:
                 key, val = arg.split("-=", 1)
+                if key not in self.multivalue_fields:
+                    raise ValueError(f"{key} is not a multivalue field")
                 removes.append((key, val))
             else:
                 query.append(arg)
 
         return query, adds, removes
 
-    @classmethod
-    def update_multivalue(cls, value: str, adds: list, removes: list) -> str:
+    def update_multivalue(
+        self, value: str, adds: list, removes: list, separator: str
+    ) -> str:
         """
         Add all elements in ``adds`` and remove all elements in ``removes`` to
         ``value``.
         """
-        multi_values = value.split(";")
+        multi_values = value.split(separator)
         for a in adds:
             if a not in multi_values:
                 multi_values.append(a)
@@ -90,11 +96,10 @@ class MultiCommand:
             except ValueError:
                 pass
 
-        return ";".join(multi_values)
+        return separator.join(multi_values)
 
-    @classmethod
     def modify_multi_items(
-        cls, lib, adds, removes, query, write, move, album, confirm, inherit
+        self, lib, adds, removes, query, write, move, album, confirm, inherit
     ):
         """Manage the multi values update, mostly influenced by modify command"""
         # Parse key=value specifications into a dictionary.
@@ -132,10 +137,11 @@ class MultiCommand:
             obj_mods = {
                 key: model_cls._parse(
                     key,
-                    cls.update_multivalue(
+                    self.update_multivalue(
                         obj.get(key, ""),
                         [obj.evaluate_template(a) for a in templates[key]["adds"]],
                         [obj.evaluate_template(r) for r in templates[key]["removes"]],
+                        self.multivalue_fields[key],
                     ),
                 )
                 for key in templates.keys()
@@ -160,25 +166,27 @@ class MultiCommand:
             else:
                 extra = ""
 
-            changed, _ = zip(
-                *ui.input_select_objects(
-                    "Really modify%s" % extra,
-                    zip(changed, changes),
-                    lambda o, om: print_and_modify(o, om, []),
-                )
+            selected_objects = ui.input_select_objects(
+                "Really modify%s" % extra,
+                zip(changed, changes),
+                lambda o, om: print_and_modify(o, om, []),
             )
+
+            if not selected_objects:
+                return
+
+            changed, _ = zip(*selected_objects)
 
         # Apply changes to database and files
         with lib.transaction():
             for obj in changed:
                 obj.try_sync(write, move, inherit)
 
-    @classmethod
-    def multi(cls, lib, opts, args):
+    def multi(self, lib, opts, args):
         """CLI entry"""
-        query, adds, removes = cls.parse_args(decargs(args))
+        query, adds, removes = self.parse_args(decargs(args))
 
-        cls.modify_multi_items(
+        self.modify_multi_items(
             lib,
             adds,
             removes,
@@ -214,4 +222,4 @@ class VirtualMultiValue(BeetsPlugin):
         self.add_media_field("work", work_field)
 
     def commands(self):
-        return [MultiCommand.get_command()]
+        return [MultiCommand(self.config["fields"].get()).get_command()]
