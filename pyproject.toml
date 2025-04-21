@@ -1,5 +1,25 @@
-[[tool.mypy]]
+[tool.mypy]
 follow_untyped_imports = true
 
-[[tool.flake8]]
-max-line-length = 89
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["beetsplug"]
+
+[project]
+name = "beets-virtual-multivalue"
+version = "0.0.1"
+authors = [
+  { name="Eric MASSERAN", email="author@example.com" },
+]
+description = "A beet plugin to use multi values on strings."
+# readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
