@@ -1,0 +1,2 @@
+responses>=0.3.0
+pytest==8.3.5
