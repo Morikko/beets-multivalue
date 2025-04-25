@@ -260,10 +260,17 @@ class MultiValuePlugin(BeetsPlugin):
         )
 
 
-class VirtualMultiValue(BeetsPlugin):
+class FixMediaField(BeetsPlugin):
+    """
+    "grouping" field was using the wrong fields for MP3 and ASF storage. Add the
+    "work" field as well as it was those fields used.
+    """
+
     def __init__(self):
         super().__init__()
-        self.fix_grouping_work_field()
+        self.config.add({"fix_media_fields": False})
+        if self.config["fix_media_fields"].get(bool):
+            self.fix_grouping_work_field()
 
     def fix_grouping_work_field(self):
         grouping_field = mediafile.MediaField(
