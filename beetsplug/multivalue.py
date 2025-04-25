@@ -1,19 +1,45 @@
+from typing import Optional, Union
+
 import mediafile
 from beets import library, ui
 from beets.plugins import BeetsPlugin
-from beets.ui import Subcommand, decargs, print_
+from beets.ui import Subcommand, UserError, decargs, print_
 from beets.ui.commands import _do_query, print_and_modify
 from beets.util import functemplate
 
 
-class MultiCommand:
+class MultiValuePlugin(BeetsPlugin):
+    """
+    Add a command to add/remove value in a multivalue field string.
+    """
 
-    def __init__(self, multivalue_fields: dict[str, str]):
-        self.multivalue_fields = multivalue_fields
+    REAL_MULTIVALUE_FIELDS = {
+        "artists",
+        "albumartists",
+        "artists_sort",
+        "artists_credit",
+        "albumartists_sort",
+        "albumartists_credit",
+        "mb_artistids",
+        "mb_albumartistids",
+    }
+
+    def __init__(self):
+        super().__init__()
+        self.config.add({"string_fields": {}})
+
+    @property
+    def string_multivalue_fields(self):
+        return self.config["string_fields"].get(dict)
+
+    def commands(self):
+        return [self.get_command()]
 
     def get_command(self) -> Subcommand:
         multi_command = Subcommand(
-            "multivalue", help="Add/Remove multi values", aliases=("multi")
+            "multivalue",
+            help="Add/Remove values in a multivalue field string",
+            aliases=("multi"),
         )
         multi_command.parser.add_option(
             "-m",
@@ -61,27 +87,39 @@ class MultiCommand:
 
         return multi_command
 
+    def parse_key_val(self, value: str, action: str) -> Optional[tuple[str, str]]:
+        if action in value and ":" not in value.split(action, 1)[0]:
+            key, val = value.split(action, 1)
+            if (
+                key not in self.string_multivalue_fields
+                and key not in self.REAL_MULTIVALUE_FIELDS
+            ):
+                raise UserError(f"'{key}' is not a declared multivalue field")
+            return (key, val)
+        else:
+            return None
+
     def parse_args(self, args) -> tuple[list, list, list]:
         query = []
         adds = []
         removes = []
         for arg in args:
-            if "+=" in arg and ":" not in arg.split("+=", 1)[0]:
-                key, val = arg.split("+=", 1)
-                if key not in self.multivalue_fields:
-                    raise ValueError(f"{key} is not a multivalue field")
-                adds.append((key, val))
-            elif "-=" in arg and ":" not in arg.split("-=", 1)[0]:
-                key, val = arg.split("-=", 1)
-                if key not in self.multivalue_fields:
-                    raise ValueError(f"{key} is not a multivalue field")
-                removes.append((key, val))
-            else:
-                query.append(arg)
+
+            added_action = self.parse_key_val(arg, "+=")
+            if added_action:
+                adds.append(added_action)
+                continue
+
+            removed_action = self.parse_key_val(arg, "-=")
+            if removed_action:
+                removes.append(removed_action)
+                continue
+
+            query.append(arg)
 
         return query, adds, removes
 
-    def update_multivalue(
+    def update_string_multivalue(
         self, value: str, adds: list, removes: list, separator: str
     ) -> str:
         """
@@ -99,6 +137,18 @@ class MultiCommand:
                 pass
 
         return separator.join(multi_values)
+
+    def update_list_multivalue(self, values: list, adds: list, removes: list) -> list:
+        """
+        Add all elements in ``adds`` and remove all elements in ``removes`` to
+        ``values``.
+        """
+        multi_values = [v for v in values if v not in removes]
+        for a in adds:
+            if a not in multi_values:
+                multi_values.append(a)
+
+        return multi_values
 
     def modify_multi_items(
         self, lib, adds, removes, query, write, move, album, confirm, inherit
@@ -135,19 +185,28 @@ class MultiCommand:
             templates[key]["removes"].append(functemplate.template(value))
 
         for obj in objs:
-
-            obj_mods = {
-                key: model_cls._parse(
-                    key,
-                    self.update_multivalue(
-                        obj.get(key, ""),
+            obj_mods = {}
+            for key in templates.keys():
+                if key in self.string_multivalue_fields:
+                    obj_mods[key] = model_cls._parse(
+                        key,
+                        self.update_string_multivalue(
+                            obj.get(key, ""),
+                            [obj.evaluate_template(a) for a in templates[key]["adds"]],
+                            [
+                                obj.evaluate_template(r)
+                                for r in templates[key]["removes"]
+                            ],
+                            self.string_multivalue_fields[key],
+                        ),
+                    )
+                else:
+                    obj_mods[key] = self.update_list_multivalue(
+                        obj.get(key, []),
                         [obj.evaluate_template(a) for a in templates[key]["adds"]],
                         [obj.evaluate_template(r) for r in templates[key]["removes"]],
-                        self.multivalue_fields[key],
-                    ),
-                )
-                for key in templates.keys()
-            }
+                    )
+
             if print_and_modify(obj, obj_mods, []) and obj not in changed:
                 changed.append(obj)
                 changes.append(obj_mods)
