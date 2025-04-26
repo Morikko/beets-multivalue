@@ -288,6 +288,3 @@ class FixMediaField(BeetsPlugin):
             mediafile.ASFStorageStyle("WM/ContentGroupDescription"),
         )
         self.add_media_field("work", work_field)
-
-    def commands(self):
-        return [MultiCommand(self.config["fields"].get()).get_command()]
