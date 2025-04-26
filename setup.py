@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="beets-multivalue",
-    version="0.1.0-dev1",
+    version="0.1.0-dev2",
     author="Eric MASSERAN",
     description="A beet plugin to manage multi-value fields",
     long_description=long_description,

@@ -126,7 +126,7 @@ class MultiValuePlugin(BeetsPlugin):
         Add all elements in ``adds`` and remove all elements in ``removes`` to
         ``value``.
         """
-        multi_values = value.split(separator)
+        multi_values = value.split(separator) if len(value) > 0 else []
         for a in adds:
             if a not in multi_values:
                 multi_values.append(a)
