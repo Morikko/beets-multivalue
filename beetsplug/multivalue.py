@@ -1,28 +1,30 @@
-from typing import Optional, Union
+from typing import Optional, Sequence
 
 import mediafile
 from beets import library, ui
+from beets.dbcore import FieldQuery
+from beets.dbcore.query import SQLiteType
 from beets.plugins import BeetsPlugin
 from beets.ui import Subcommand, UserError, decargs, print_
 from beets.ui.commands import _do_query, print_and_modify
 from beets.util import functemplate
+
+LIST_MULTIVALUE_FIELDS = {
+    "artists",
+    "albumartists",
+    "artists_sort",
+    "artists_credit",
+    "albumartists_sort",
+    "albumartists_credit",
+    "mb_artistids",
+    "mb_albumartistids",
+}
 
 
 class MultiValuePlugin(BeetsPlugin):
     """
     Add a command to add/remove value in a multivalue field string.
     """
-
-    REAL_MULTIVALUE_FIELDS = {
-        "artists",
-        "albumartists",
-        "artists_sort",
-        "artists_credit",
-        "albumartists_sort",
-        "albumartists_credit",
-        "mb_artistids",
-        "mb_albumartistids",
-    }
 
     def __init__(self):
         super().__init__()
@@ -92,7 +94,7 @@ class MultiValuePlugin(BeetsPlugin):
             key, val = value.split(action, 1)
             if (
                 key not in self.string_multivalue_fields
-                and key not in self.REAL_MULTIVALUE_FIELDS
+                and key not in LIST_MULTIVALUE_FIELDS
             ):
                 raise UserError(f"'{key}' is not a declared multivalue field")
             return (key, val)
@@ -288,3 +290,28 @@ class FixMediaField(BeetsPlugin):
             mediafile.ASFStorageStyle("WM/ContentGroupDescription"),
         )
         self.add_media_field("work", work_field)
+
+
+class MultiValueQuery(FieldQuery):
+
+    def col_clause(self) -> tuple[str, Sequence[SQLiteType]]:
+        return self.field + " IS NOT NULL", ()
+
+    @classmethod
+    def value_match(self, pattern, val):
+        if self.field in LIST_MULTIVALUE_FIELDS:
+            return pattern in val
+        # elif self.field:
+        #     ...
+        else:
+            raise UserError(f"'{self.field}' is not a declared multivalue field")
+
+
+class MultiValueQueryPlugin(BeetsPlugin):
+
+    def __init__(self):
+        super().__init__()
+        self.config.add({"string_fields": {}})
+
+    def queries(self):
+        return {"[]": MultiValueQuery}

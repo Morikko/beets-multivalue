@@ -2,6 +2,7 @@ import beets
 import pytest
 from beets.test.helper import PluginTestCase
 
+from beetsplug.multivalue import MultiValueQuery
 
 
 class MultiValueModifyCliTest(PluginTestCase):
@@ -121,3 +122,45 @@ class MultiValueModifyCliTest(PluginTestCase):
             beets.ui.UserError, match=r"'genre' is not a declared multivalue field"
         ):
             self.run_command("multivalue", "-y", "genre+=Blues")
+
+
+class MultiValueQueryTest(PluginTestCase):
+    plugin = "multivalue"
+
+    def setUp(self):
+        """Set up test environment for bare ASCII query matching."""
+        super().setUp()
+
+    def test_query_mv_list(self):
+        self.add_item(artists=["AC/DC", "Oasis"])
+        self.add_item(artists=["AC/DC"])
+        self.add_item(artists=["Oasis"])
+
+        test_cases = [("artists:AC/DC", [["AC/DC", "Oasis"], ["AC/DC"]])]
+        for query, expected_titles in test_cases:
+            with self.subTest(query=query, expected_titles=expected_titles):
+                items = self.lib.items(query)
+                assert [item.artists for item in items] == expected_titles
+
+    def enable_string_field(self, sep=","):
+        self.config["multivalue"]["string_fields"] = {"genre": sep}
+
+    def test_query_mv_string(self):
+        self.enable_string_field()
+        bi_genre = self.add_item(genre="Rock,Blues")
+        gg = self.add_item(genre="Classic Rock")
+        go = self.add_item(genre="Classic")
+
+        testee = MultiValueQuery("genre", "Rock")
+        assert testee.match(bi_genre)
+        assert testee.match(gg)
+        assert not testee.match(go)
+
+        test_cases = [("genre:[]Rock", ["Classic Rock", "Rock,Blues"])]
+        for query, expected_titles in test_cases:
+            with self.subTest(query=query, expected_titles=expected_titles):
+                items = self.lib.items(query)
+                assert [item.genre for item in items] == expected_titles
+
+    def test_query_not_mv(self):
+        self.run_command("ls", "genre:[]AC/DC")

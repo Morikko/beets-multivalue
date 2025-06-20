@@ -1,7 +1,7 @@
 # Multi-value
 
-Multi-values on a tag is useful to provide more different independent
-information belonging to the same context.
+Multi-values on a tag is useful to provide different and independent information
+belonging to the same context.
 
 This plugin:
 - Add a command to add/remove values in a multi-value tag
@@ -30,7 +30,7 @@ as not a "standard" like `grouping`.
 
 An example could be to add multiple genres separated by a comma: `Rock,Hard Rock`
 
-Some tools also supports custom separator splitting like
+Some external tools also supports custom separator splitting like
 [navidrome](https://www.navidrome.org/docs/usage/customtags/#changing-separators)
 since v0.55.0.
 
@@ -44,6 +44,34 @@ multivalue:
     genre: ","
 ```
 
+# Searching
+
+```shell
+# Non overlapping with usual
+beet ls genre:[]Rock # equals to genre:Rock
+# Regex search
+# Under the hood `.` is transformed to `[^<sep>]
+# And ^$, to look fo the real start/end or the separator
+beet ls genre:[]:Rock
+# Enforce full match by looking for the separator or the start/end
+beet ls genre:[]=Rock
+beet ls genre:[]=~Rock
+
+beet ls genre:[]#Rock
+
+# Multi-search
+beet ls genre:[]{Rock,:Class?ic} # At least one of the value
+beet ls genre:[][Rock,:Class?ic] # All the values must be present
+
+# "," delimits the values, to use a "," in the string "\,"
+```
+
+For all searches, if the separator is present in the query, a warning is printed
+but the query is still run. It may even be a false positive in the case of the
+regex case: `genre:[]:[a-z]{3,9}`. The comma is part of the regex syntax, but
+the warning is always added.
+
+
 # Modify Command
 
 It is possible to add or remove value:
@@ -56,12 +84,20 @@ beet multi genre+="Classic Rock" genre-="Hard Rock" genre-="Blues" <query>
 # genre: Rock,Classic Rock
 ```
 
+TODO: Full set genre=[,,]
+
 The command is heavily influenced by the modify one and provide the same flags.
 By default, a confirmation after showing the diff is requested.
 
 The diff may be sub-optimal as it does not know about the separator, like
 `genre: Hard Rock,**Classic** Rock,**Rock** -> Hard Rock,Rock`. But the apply
 change is still accurate.
+
+To clear a multi-value field, the original modify command still applies:
+
+```shell
+beet modify mv-field!
+```
 
 # Grouping/Work fields
 
@@ -90,7 +126,10 @@ It is required to make beets read the tags from the file again as else the kept
 value in DB is the old one from a potential wrong fields:
 
 ```shell
-TODO:
+beet update -F work -F grouping
 ```
 
+WARNING: As the work was not saved to the file previously, by reading from the
+files it may remove all the "work" fetched from Musicbrainz and only stored in
+the DB.
 
