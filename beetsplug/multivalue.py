@@ -99,8 +99,10 @@ class MultiValuePlugin(BeetsPlugin):
         else:
             return None
 
-    def parse_args(self, args) -> tuple[list, list, list]:
+    def parse_args(self, args) -> tuple[list, dict, list, list, list]:
         query = []
+        mods = {}
+        dels = []
         adds = []
         removes = []
         for arg in args:
@@ -115,9 +117,15 @@ class MultiValuePlugin(BeetsPlugin):
                 removes.append(removed_action)
                 continue
 
-            query.append(arg)
+            if arg.endswith("!") and "=" not in arg and ":" not in arg:
+                dels.append(arg[:-1])  # Strip trailing !.
+            elif "=" in arg and ":" not in arg.split("=", 1)[0]:
+                key, val = arg.split("=", 1)
+                mods[key] = val
+            else:
+                query.append(arg)
 
-        return query, adds, removes
+        return query, mods, dels, adds, removes
 
     def update_string_multivalue(
         self, value: str, adds: list, removes: list, separator: str
@@ -151,7 +159,18 @@ class MultiValuePlugin(BeetsPlugin):
         return multi_values
 
     def modify_multi_items(
-        self, lib, adds, removes, query, write, move, album, confirm, inherit
+        self,
+        lib,
+        mods,
+        dels,
+        adds,
+        removes,
+        query,
+        write,
+        move,
+        album,
+        confirm,
+        inherit,
     ):
         """Manage the multi values update, mostly influenced by modify command"""
         # Parse key=value specifications into a dictionary.
@@ -184,10 +203,17 @@ class MultiValuePlugin(BeetsPlugin):
                 }
             templates[key]["removes"].append(functemplate.template(value))
 
+        for key, value in mods.items():
+            templates[key] = functemplate.template(value)
+
         for obj in objs:
             obj_mods = {}
             for key in templates.keys():
-                if key in self.string_multivalue_fields:
+                if key in mods:
+                    obj_mods[key] = model_cls._parse(
+                        key, obj.evaluate_template(templates[key])
+                    )
+                elif key in self.string_multivalue_fields:
                     obj_mods[key] = model_cls._parse(
                         key,
                         self.update_string_multivalue(
@@ -207,7 +233,7 @@ class MultiValuePlugin(BeetsPlugin):
                         [obj.evaluate_template(r) for r in templates[key]["removes"]],
                     )
 
-            if print_and_modify(obj, obj_mods, []) and obj not in changed:
+            if print_and_modify(obj, obj_mods, dels) and obj not in changed:
                 changed.append(obj)
                 changes.append(obj_mods)
 
@@ -230,7 +256,7 @@ class MultiValuePlugin(BeetsPlugin):
             selected_objects = ui.input_select_objects(
                 "Really modify%s" % extra,
                 zip(changed, changes),
-                lambda o, om: print_and_modify(o, om, []),
+                lambda o, om: print_and_modify(o, om, dels),
             )
 
             if not selected_objects:
@@ -245,10 +271,12 @@ class MultiValuePlugin(BeetsPlugin):
 
     def multi(self, lib, opts, args):
         """CLI entry"""
-        query, adds, removes = self.parse_args(decargs(args))
+        query, mods, dels, adds, removes = self.parse_args(decargs(args))
 
         self.modify_multi_items(
             lib,
+            mods,
+            dels,
             adds,
             removes,
             query,

@@ -1,7 +1,7 @@
 # Multi-value
 
-Multi-values on a tag is useful to provide more different independent
-information belonging to the same context.
+Multi-values on a tag is useful to provide different and independent information
+belonging to the same context.
 
 This plugin:
 - Add a command to add/remove values in a multi-value tag
@@ -30,7 +30,7 @@ as not a "standard" like `grouping`.
 
 An example could be to add multiple genres separated by a comma: `Rock,Hard Rock`
 
-Some tools also supports custom separator splitting like
+Some external tools also supports custom separator splitting like
 [navidrome](https://www.navidrome.org/docs/usage/customtags/#changing-separators)
 since v0.55.0.
 
@@ -49,19 +49,28 @@ multivalue:
 It is possible to add or remove value:
 
 ```shell
-# genre: Rock
+# Initial: genre: Rock
 beet multivalue grouping+="Hard Rock" <query>
 # genre: Rock,Hard Rock
 beet multi genre+="Classic Rock" genre-="Hard Rock" genre-="Blues" <query>
 # genre: Rock,Classic Rock
+
+# Original modify command still applies
+beet multi genre+="Classic Rock" genre-="Hard Rock" year! title="Best sont"
 ```
 
-The command is heavily influenced by the modify one and provide the same flags.
-By default, a confirmation after showing the diff is requested.
+The command is influenced by the modify one and provide the same flags. By
+default, a confirmation after showing the diff is requested and highly
+recommended to avoid any data loss.
 
-The diff may be sub-optimal as it does not know about the separator, like
-`genre: Hard Rock,**Classic** Rock,**Rock** -> Hard Rock,Rock`. But the apply
-change is still accurate.
+The diff may be sub-optimal as it does not know about the separator. In the
+following example "Classic Rock" is not highlighted continously although the
+final change is still accurate: `genre: Hard Rock,**Classic** Rock,**Rock** ->
+Hard Rock,Rock`.
+
+The modify command has been "copied" and upstream changes won't apply without a
+port in this plugin.
+
 
 # Grouping/Work fields
 
@@ -90,7 +99,10 @@ It is required to make beets read the tags from the file again as else the kept
 value in DB is the old one from a potential wrong fields:
 
 ```shell
-TODO:
+beet update -F work -F grouping
 ```
 
+WARNING: As the work was not saved to the file previously, by reading from the
+files it may remove all the "work" fetched from Musicbrainz and only stored in
+the DB.
 
