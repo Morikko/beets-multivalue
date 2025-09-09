@@ -1,4 +1,4 @@
-from typing import Iterable, Literal, Optional, Tuple, Type
+from typing import Iterable, Literal, Optional, Type
 
 import mediafile
 from beets import dbcore, library, plugins, ui
@@ -6,6 +6,8 @@ from beets.plugins import BeetsPlugin
 from beets.ui import Subcommand, UserError, decargs, print_
 from beets.ui.commands import _do_query, print_and_modify
 from beets.util import functemplate
+
+SearchTuple = tuple[str, Type[dbcore.query.FieldQuery]]
 
 
 class MultiValuePlugin(BeetsPlugin):
@@ -97,7 +99,7 @@ class MultiValuePlugin(BeetsPlugin):
 
     def parse_key_val(
         self, value: str, action: Literal["+", "-"]
-    ) -> Optional[Tuple[str, str, Type[dbcore.query.FieldQuery]]]:
+    ) -> Optional[tuple[str, str, Type[dbcore.query.FieldQuery]]]:
         """
         Check if the value is doing an add or remove.
         """
@@ -118,6 +120,8 @@ class MultiValuePlugin(BeetsPlugin):
 
         for pre, query_class in self.get_prefixes().items():
             if val.startswith(pre):
+                if action == "+" and issubclass(query_class, dbcore.query.RegexpQuery):
+                    raise UserError("Regex is not supported when adding a value")
                 return key, val[len(pre) :], query_class
 
         # Exact match by default
@@ -152,7 +156,11 @@ class MultiValuePlugin(BeetsPlugin):
         return query, mods, dels, adds, removes
 
     def update_string_multivalue(
-        self, value: str, adds: list, removes: list, separator: str
+        self,
+        value: str,
+        adds: Iterable[SearchTuple],
+        removes: Iterable[SearchTuple],
+        separator: str,
     ) -> str:
         """
         Add all elements in ``adds`` and remove all elements in ``removes`` to
@@ -169,19 +177,27 @@ class MultiValuePlugin(BeetsPlugin):
                 multi_values.append(pattern)
 
         for pattern, query in removes:
+            # Necessary to support regex. Convert the str to a regex.
+            pattern = query(pattern=pattern, field_name="").pattern
             multi_values = [
                 value for value in multi_values if not query.value_match(pattern, value)
             ]
 
         return separator.join(multi_values)
 
-    def update_list_multivalue(self, values: list, adds: list, removes: list) -> list:
+    def update_list_multivalue(
+        self,
+        values: list[str],
+        adds: Iterable[SearchTuple],
+        removes: Iterable[SearchTuple],
+    ) -> list[str]:
         """
         Add all elements in ``adds`` and remove all elements in ``removes`` to
         ``values``.
         """
         multi_values = values.copy()
         for pattern, query in removes:
+            pattern = query(pattern=pattern, field_name="").pattern
             multi_values = [
                 value for value in multi_values if not query.value_match(pattern, value)
             ]
@@ -197,9 +213,7 @@ class MultiValuePlugin(BeetsPlugin):
 
         return multi_values
 
-    def evaluate_template(
-        self, obj, values: Iterable[Tuple[str, Type[dbcore.query.FieldQuery]]]
-    ):
+    def evaluate_template(self, obj, values: Iterable[SearchTuple]):
         return [(obj.evaluate_template(a), query) for a, query in values]
 
     def modify_multi_items(

@@ -43,6 +43,8 @@ class MultiValueModifyCliTest(PluginTestCase):
             # list_remove_match_insensitive
             ("list", "artists", ["Eric"], "artists-=~Eric", []),
             ("list", "artists", ["eric"], "artists-=~Eric", []),
+            # list_remove_match_regex
+            ("list", "artists", ["Eric & Max"], "artists-=:Eric.*", []),
             # string_add_value
             ("string", "genre", "Classic", "genre+=Rock", "Classic,Rock"),
             # string_remove_value
@@ -72,6 +74,8 @@ class MultiValueModifyCliTest(PluginTestCase):
             # string_remove_match_insensitive
             ("string", "genre", "Classic", "genre-=~Classic", ""),
             ("string", "genre", "classic", "genre-=~Classic", ""),
+            # string_remove_match_regex
+            ("string", "genre", "Rock&Roll", "genre-=:Rock.*", ""),
         ]
     )
     def test_multivalue_operations(
@@ -93,6 +97,12 @@ class MultiValueModifyCliTest(PluginTestCase):
         item.load()
 
         assert getattr(item, field_name) == expected_value
+
+    def test_multivalue_unsupported_add_regex_match(self):
+        with pytest.raises(
+            beets.ui.UserError, match=r"Regex is not supported when adding a value"
+        ):
+            self.run_command("multivalue", "-y", "artists+=:Rock.*")
 
     @parameterized.expand(
         [
