@@ -173,6 +173,18 @@ class MultiValueModifyCliTest(PluginTestCase):
         ):
             self.run_command("multimodify", "-y", "genre+=Blues")
 
+    @parameterized.expand(
+        [
+            ("multi",),
+            ("mm",),
+        ]
+    )
+    def test_multimodify_alias(self, alias):
+        item = self.add_item(artists=[])
+        self.run_command(alias, "-y", "artists+=Eric")
+        item.load()
+        assert item.artists == ["Eric"]
+
     ###
     # Compatibility with standard modify command
     ###
