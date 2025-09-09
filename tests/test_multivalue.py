@@ -97,8 +97,10 @@ class MultiValueModifyCliTest(PluginTestCase):
     @parameterized.expand(
         [
             ("list", "artists", ["Éric"], "artists+=#Èric", ["Éric"]),
+            ("list", "artists", [], "artists+=#Èric", ["Èric"]),
             ("list", "artists", ["Éric"], "artists-=#Èric", []),
             ("string", "genre", "Éric", "genre+=#Èric", "Éric"),
+            ("string", "genre", "", "genre+=#Èric", "Èric"),
             ("string", "genre", "Éric", "genre-=#Èric", ""),
         ]
     )
