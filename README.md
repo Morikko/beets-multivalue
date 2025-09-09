@@ -51,7 +51,7 @@ multivalue:
 # Initial: genre: Rock
 
 # Add a value
-beet multivalue grouping+="Hard Rock" <query>
+beet multimodify grouping+="Hard Rock" <query>
 # genre: Rock,Hard Rock
 
 # Add and remove values
@@ -64,44 +64,44 @@ beet multi genre+="Classic Rock" genre-="Hard Rock" year! title="Best song"
 # Adding the same value is detected and avoided. By default, exact match is applied.
 # It is easy to remember, there is the "=", the same used in a regular query.
 # Initial: genre: Rock
-beet multivalue grouping+="Rock" <query>
+beet multimodify grouping+="Rock" <query>
 # genre: Rock
 
 # For case insensitivity, add "~" as in a regular query.
-beet multivalue grouping+=~rock <query>
+beet multimodify grouping+=~rock <query>
 # genre: Rock
 
 # It is also possible to use the ones from a plugin by adding the equivalent prefix.
 # For example with bareasc set to the prefix "#".
 # Initial: artists: [Eric]
-beet multivalue artists+=#Éric <query>
+beet multimodify artists+=#Éric <query>
 # no change
 
 # The same work for removing
 
 # Initial: genre: Rock
-beet multivalue grouping-="Blues" <query>
+beet multimodify grouping-="Blues" <query>
 # No change
 
 # For case insensitivity, add "~" as in a regular query
 # Initial: genre: Rock
-beet multivalue grouping-=~rock <query>
+beet multimodify grouping-=~rock <query>
 # genre: ""
 
 # For bareasc set to the prefix "#"
 # Initial: artists: [Éric]
-beet multivalue artists-=#Eric <query>
+beet multimodify artists-=#Eric <query>
 # artists: []
 
 # Removing is also supporting Regex
 # Initial: artists: [Eric]
-beet multivalue artists-=:E?ic <query>
+beet multimodify artists-=:E?ic <query>
 # artists: []
 
 # Adding can not support regex as else the regex itself would be added. 
 # If you want to harmonize the data, you may remove and add at the same time.
 # Initial: genre: Rock&Roll
-beet multivalue 'genre-=:Rock.+' genre+=Rock <query>
+beet multimodify 'genre-=:Rock.+' genre+=Rock <query>
 # genre: Rock
 ```
 
@@ -116,10 +116,10 @@ prune items as much as possible.
 
 ```sh
 # Only iterate over items without the Rock word in genre
-beet multivalue genre+=Rock '^genre:Rock'
+beet multimodify genre+=Rock '^genre:Rock'
 
 # Only iterate over items with the Rock word in genre
-beet multivalue genre-=Rock 'genre:Rock'
+beet multimodify genre-=Rock 'genre:Rock'
 ```
 
 ### Limitation

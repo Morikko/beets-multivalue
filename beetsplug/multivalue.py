@@ -12,7 +12,7 @@ SearchTuple = tuple[str, Type[dbcore.query.FieldQuery]]
 
 class MultiValuePlugin(BeetsPlugin):
     """
-    Add a command to add/remove value in a multivalue field string.
+    Add a modify command with add/remove values in multivalue fields
     """
 
     REAL_MULTIVALUE_FIELDS = {
@@ -47,9 +47,9 @@ class MultiValuePlugin(BeetsPlugin):
 
     def get_command(self) -> Subcommand:
         multi_command = Subcommand(
-            "multivalue",
-            help="Add/Remove values in a multivalue field string",
-            aliases=("multi"),
+            "multimodify",
+            help="modify command with add/remove in multi-value tags",
+            aliases=("multi", "mm"),
         )
         multi_command.parser.add_option(
             "-m",

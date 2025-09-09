@@ -78,10 +78,10 @@ class MultiValueModifyCliTest(PluginTestCase):
             ("string", "genre", "Rock&Roll", "genre-=:Rock.*", ""),
         ]
     )
-    def test_multivalue_operations(
+    def test_multimodify_operations(
         self, field_type, field_name, initial_value, command, expected_value
     ):
-        """Test various multivalue operations for both list and string fields"""
+        """Test various multimodify operations for both list and string fields"""
         if field_type == "string":
             self.enable_string_field()
 
@@ -93,16 +93,16 @@ class MultiValueModifyCliTest(PluginTestCase):
 
         # Split command if it contains multiple operations
         commands = command.split()
-        self.run_command("multivalue", "-y", *commands)
+        self.run_command("multimodify", "-y", *commands)
         item.load()
 
         assert getattr(item, field_name) == expected_value
 
-    def test_multivalue_unsupported_add_regex_match(self):
+    def test_multimodify_unsupported_add_regex_match(self):
         with pytest.raises(
             beets.ui.UserError, match=r"Regex is not supported when adding a value"
         ):
-            self.run_command("multivalue", "-y", "artists+=:Rock.*")
+            self.run_command("multimodify", "-y", "artists+=:Rock.*")
 
     @parameterized.expand(
         [
@@ -144,7 +144,7 @@ class MultiValueModifyCliTest(PluginTestCase):
 
         # Split command if it contains multiple operations
         commands = command.split()
-        self.run_command("multivalue", "-y", *commands)
+        self.run_command("multimodify", "-y", *commands)
         item.load()
 
         assert getattr(item, field_name) == expected_value
@@ -163,7 +163,7 @@ class MultiValueModifyCliTest(PluginTestCase):
         """Test different string field separators"""
         self.enable_string_field(separator)
         item = self.add_item(genre=initial_value)
-        self.run_command("multivalue", "-y", command)
+        self.run_command("multimodify", "-y", command)
         item.load()
         assert item.genre == expected_value
 
@@ -171,7 +171,7 @@ class MultiValueModifyCliTest(PluginTestCase):
         with pytest.raises(
             beets.ui.UserError, match=r"'genre' is not a declared multivalue field"
         ):
-            self.run_command("multivalue", "-y", "genre+=Blues")
+            self.run_command("multimodify", "-y", "genre+=Blues")
 
     ###
     # Compatibility with standard modify command
@@ -199,12 +199,12 @@ class MultiValueModifyCliTest(PluginTestCase):
         self, initial_fields, commands, expected_fields, unchanged_fields
     ):
         """
-        Test that multivalue command behaves the same as modify for basic field updates
+        Test that multimodify command behaves the same as modify for basic field updates
         """
         item = self.add_item(**initial_fields)
 
         # Split command if it contains multiple operations
-        self.run_command("multivalue", "-y", *commands)
+        self.run_command("multimodify", "-y", *commands)
         item.load()
 
         # Check expected changes
@@ -216,14 +216,14 @@ class MultiValueModifyCliTest(PluginTestCase):
             assert getattr(item, field) == expected_value
 
     def test_compatibility_with_modify_query_behavior(self):
-        """Test that multivalue command uses the same query behavior as modify"""
+        """Test that multimodify command uses the same query behavior as modify"""
         # Add multiple items
         item1 = self.add_item(artist="Artist A", title="Song 1")
         item2 = self.add_item(artist="Artist B", title="Song 2")
         item3 = self.add_item(artist="Artist A", title="Song 3")
 
-        # Use multivalue command with query (should behave like modify)
-        self.run_command("multivalue", "-y", "artist:Artist A", "genre=Rock")
+        # Use multimodify command with query (should behave like modify)
+        self.run_command("multimodify", "-y", "artist:Artist A", "genre=Rock")
 
         # Reload items
         item1.load()
@@ -256,12 +256,12 @@ class MultiValueModifyCliTest(PluginTestCase):
     def test_compatibility_with_modify_field_deletion(
         self, initial_fields, deletion_command, expected_deletions, unchanged_fields
     ):
-        """Test that multivalue command supports field deletion like modify"""
+        """Test that multimodify command supports field deletion like modify"""
         item = self.add_item(**initial_fields)
 
         # Split command if it contains multiple operations
         commands = deletion_command.split()
-        self.run_command("multivalue", "-y", *commands)
+        self.run_command("multimodify", "-y", *commands)
         item.load()
 
         # Check deleted fields
@@ -273,13 +273,13 @@ class MultiValueModifyCliTest(PluginTestCase):
             assert getattr(item, field) == expected_value
 
     def test_compatibility_with_modify_mixed_operations(self):
-        """Test that multivalue command supports mixed operations like modify"""
+        """Test that multimodify command supports mixed operations like modify"""
         self.enable_string_field()
         item = self.add_item(grouping="Old Artist", genre="Rock,Pop", year=2020)
 
-        # Mix basic assignment, field deletion, and multivalue operations
+        # Mix basic assignment, field deletion, and multimodify operations
         self.run_command(
-            "multivalue", "-y", "grouping=New Artist", "year!", "genre+=Jazz"
+            "multimodify", "-y", "grouping=New Artist", "year!", "genre+=Jazz"
         )
         item.load()
         assert item.grouping == "New Artist"
@@ -297,22 +297,22 @@ class MultiValueModifyCliTest(PluginTestCase):
     def test_compatibility_with_modify_command_options(
         self, options, command, expected_value
     ):
-        """Test that multivalue command accepts the same options as modify command"""
+        """Test that multimodify command accepts the same options as modify command"""
         # Extract field name from command for item creation
         field_name = command.split("=")[0]
         item = self.add_item(**{field_name: "Old Value"})
 
         # Run command with options
-        self.run_command("multivalue", *options, command)
+        self.run_command("multimodify", *options, command)
         item.load()
 
         # Check that the field was updated
         assert getattr(item, field_name) == expected_value
 
     def test_compatibility_with_modify_no_matching_items(self):
-        """Test that multivalue command has similar error handling to modify"""
+        """Test that multimodify command has similar error handling to modify"""
         with pytest.raises(beets.ui.UserError, match=r"No matching items found\."):
-            self.run_command("multivalue")
+            self.run_command("multimodify")
 
         with pytest.raises(beets.ui.UserError, match=r"No matching items found\."):
-            self.run_command("multivalue", "-y", "nonexistent:query", "title=Test")
+            self.run_command("multimodify", "-y", "nonexistent:query", "title=Test")
