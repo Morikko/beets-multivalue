@@ -174,6 +174,7 @@ class MultiValuePlugin(BeetsPlugin):
     def update_string_multivalue(
         self,
         value: str,
+        assignment: Optional[str],
         adds: Iterable[SearchTuple],
         removes: Iterable[SearchTuple],
         separator: str,
@@ -182,7 +183,20 @@ class MultiValuePlugin(BeetsPlugin):
         Add all elements in ``adds`` and remove all elements in ``removes`` to
         ``value``.
         """
-        multi_values = value.split(separator) if len(value) > 0 else []
+        # 1/ Assignment
+        base_value = assignment if assignment is not None else value
+
+        multi_values = base_value.split(separator) if len(base_value) > 0 else []
+
+        # 2/ Remove
+        for pattern, query in removes:
+            # Necessary to support regex. Convert the str to a regex.
+            pattern = query(pattern=pattern, field_name="").pattern
+            multi_values = [
+                value for value in multi_values if not query.value_match(pattern, value)
+            ]
+
+        # 3/ Add
         for pattern, query in adds:
             is_matching = False
             for value in multi_values:
@@ -192,18 +206,12 @@ class MultiValuePlugin(BeetsPlugin):
             if not is_matching:
                 multi_values.append(pattern)
 
-        for pattern, query in removes:
-            # Necessary to support regex. Convert the str to a regex.
-            pattern = query(pattern=pattern, field_name="").pattern
-            multi_values = [
-                value for value in multi_values if not query.value_match(pattern, value)
-            ]
-
         return separator.join(multi_values)
 
     def update_list_multivalue(
         self,
         values: list[str],
+        assignment: Optional[str],
         adds: Iterable[SearchTuple],
         removes: Iterable[SearchTuple],
     ) -> list[str]:
@@ -211,13 +219,22 @@ class MultiValuePlugin(BeetsPlugin):
         Add all elements in ``adds`` and remove all elements in ``removes`` to
         ``values``.
         """
-        multi_values = values.copy()
+        # 1/ Assignment
+        if assignment == "":
+            multi_values = []
+        elif assignment:
+            multi_values = assignment.split(r"\␀")
+        else:
+            multi_values = values.copy()
+
+        # 2/ Remove
         for pattern, query in removes:
             pattern = query(pattern=pattern, field_name="").pattern
             multi_values = [
                 value for value in multi_values if not query.value_match(pattern, value)
             ]
 
+        # 3/ Add
         for pattern, query in adds:
             is_matching = False
             for value in multi_values:
@@ -229,8 +246,18 @@ class MultiValuePlugin(BeetsPlugin):
 
         return multi_values
 
-    def evaluate_template(self, obj, values: Iterable[SearchTuple]):
+    def evaluate_value_template(self, obj, value: Optional[str]) -> Optional[str]:
+        return obj.evaluate_template(value) if value is not None else None
+
+    def evaluate_iter_template(self, obj, values: Iterable[SearchTuple]):
         return [(obj.evaluate_template(a), query) for a, query in values]
+
+    def get_default_template(self) -> dict:
+        return {
+            "set": None,
+            "adds": [],
+            "removes": [],
+        }
 
     def modify_multi_items(
         self,
@@ -246,7 +273,15 @@ class MultiValuePlugin(BeetsPlugin):
         confirm,
         inherit,
     ):
-        """Manage the multi values update, mostly influenced by modify command"""
+        """
+        Manage the multi values update, mostly influenced by modify command
+
+        Order of application
+        # 1/ Assignment
+        # 2/ Remove
+        # 3/ Add
+        # 4/ Del
+        """
         # Parse key=value specifications into a dictionary.
         model_cls = library.Album if album else library.Item
 
@@ -263,45 +298,43 @@ class MultiValuePlugin(BeetsPlugin):
         templates = {}
         for key, value, query in adds:
             if key not in templates:
-                templates[key] = {
-                    "adds": [],
-                    "removes": [],
-                }
+                templates[key] = self.get_default_template()
             templates[key]["adds"].append((functemplate.template(value), query))
 
         for key, value, query in removes:
             if key not in templates:
-                templates[key] = {
-                    "adds": [],
-                    "removes": [],
-                }
+                templates[key] = self.get_default_template()
             templates[key]["removes"].append((functemplate.template(value), query))
 
         for key, value in mods.items():
-            templates[key] = functemplate.template(value)
+            if key not in templates:
+                templates[key] = self.get_default_template()
+            templates[key]["set"] = functemplate.template(value)
 
         for obj in objs:
             obj_mods = {}
             for key in templates.keys():
-                if key in mods:
-                    obj_mods[key] = model_cls._parse(
-                        key, obj.evaluate_template(templates[key])
-                    )
-                elif key in self.string_multivalue_fields:
+                if key in self.string_multivalue_fields:
                     obj_mods[key] = model_cls._parse(
                         key,
                         self.update_string_multivalue(
                             obj.get(key, ""),
-                            self.evaluate_template(obj, templates[key]["adds"]),
-                            self.evaluate_template(obj, templates[key]["removes"]),
+                            self.evaluate_value_template(obj, templates[key]["set"]),
+                            self.evaluate_iter_template(obj, templates[key]["adds"]),
+                            self.evaluate_iter_template(obj, templates[key]["removes"]),
                             self.string_multivalue_fields[key],
                         ),
                     )
-                else:
+                elif key in self.REAL_MULTIVALUE_FIELDS:
                     obj_mods[key] = self.update_list_multivalue(
                         obj.get(key, []),
-                        self.evaluate_template(obj, templates[key]["adds"]),
-                        self.evaluate_template(obj, templates[key]["removes"]),
+                        self.evaluate_value_template(obj, templates[key]["set"]),
+                        self.evaluate_iter_template(obj, templates[key]["adds"]),
+                        self.evaluate_iter_template(obj, templates[key]["removes"]),
+                    )
+                else:
+                    obj_mods[key] = model_cls._parse(
+                        key, obj.evaluate_template(templates[key]["set"])
                     )
 
             if print_and_modify(obj, obj_mods, dels) and obj not in changed:

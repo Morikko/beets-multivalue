@@ -20,6 +20,7 @@ class MultiValueModifyCliTest(PluginTestCase):
             ("list", "artists", ["Eric"], "artists+=Jamel", ["Eric", "Jamel"]),
             # list_remove_value
             ("list", "artists", ["Eric", "Jamel"], "artists-=Jamel", ["Eric"]),
+            ("list", "artists", ["Jamel", "Eric", "Jamel"], "artists-=Jamel", ["Eric"]),
             # list_double_action
             (
                 "list",
@@ -45,10 +46,43 @@ class MultiValueModifyCliTest(PluginTestCase):
             ("list", "artists", ["eric"], "artists-=~Eric", []),
             # list_remove_match_regex
             ("list", "artists", ["Eric & Max"], "artists-=:Eric.*", []),
+            # list_clean_regex_add
+            (
+                "list",
+                "artists",
+                ["Eric & Max"],
+                "artists-=:Eric.* artists+=Eric",
+                ["Eric"],
+            ),
+            # list_test_order
+            (
+                "list",
+                "artists",
+                ["original"],
+                r"artists+=base artists-=base artists=base\␀pivot",
+                ["pivot", "base"],
+            ),
+            # list_reset
+            (
+                "list",
+                "artists",
+                ["original"],
+                "artists+=new artists= artists+=new2",
+                ["new", "new2"],
+            ),
+            # list_del_win
+            (
+                "list",
+                "artists",
+                ["original"],
+                r"artists! artists+=base artists-=base artists=base\␀pivot",
+                [],
+            ),
             # string_add_value
             ("string", "genre", "Classic", "genre+=Rock", "Classic,Rock"),
             # string_remove_value
             ("string", "genre", "Classic,Rock", "genre-=Rock", "Classic"),
+            ("string", "genre", "Rock,Classic,Rock", "genre-=Rock", "Classic"),
             # string_double_action
             (
                 "string",
@@ -76,6 +110,32 @@ class MultiValueModifyCliTest(PluginTestCase):
             ("string", "genre", "classic", "genre-=~Classic", ""),
             # string_remove_match_regex
             ("string", "genre", "Rock&Roll", "genre-=:Rock.*", ""),
+            # string_clean_regex_add
+            ("string", "genre", "Rock&Roll", "genre-=:Rock.* genre+=Rock", "Rock"),
+            # string_test_order
+            (
+                "string",
+                "genre",
+                "original",
+                "genre+=base genre-=base genre=base,pivot",
+                "pivot,base",
+            ),
+            # string_reset
+            (
+                "string",
+                "genre",
+                "original",
+                "genre+=new genre= genre+=new2",
+                "new,new2",
+            ),
+            # string_del_win
+            (
+                "string",
+                "genre",
+                "original",
+                "genre! genre+=base genre-=base genre=base,pivot",
+                "",
+            ),
         ]
     )
     def test_multimodify_operations(

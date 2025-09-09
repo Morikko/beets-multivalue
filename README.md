@@ -103,11 +103,44 @@ beet multimodify artists-=:E?ic <query>
 # Initial: genre: Rock&Roll
 beet multimodify 'genre-=:Rock.+' genre+=Rock <query>
 # genre: Rock
+
+# Order of execution
+# genre: original
+beet mm genre+=base genre-=base genre=base,pivot
+# genre: pivot,base
+
+# Deletion always win
+beet mm genre! genre+=base genre-=base genre=base,pivot
+# genre:
+
+# Reset field first
+beet mm  genre= genre+=new genre-=new2
+# genre: new,new2
 ```
 
 The command is influenced by the `modify` one and provides the same flags. By
 default, a confirmation after showing the diff is requested and highly
 recommended to avoid any data loss.
+
+### Order of execution
+
+1. Direct assignment are always run first: `genre=Rock`. If multiple assignments
+   on the same field are written, the last one win.
+
+2. Values are removed: `genre-=Rock`. It allows to do some pre-cleaning before
+   adding values in the same run. Always with capital R: `genre-=rock
+   genre+=Rock`. Values are removed in order from the CLI `genre-=Rock
+   genre-=Classic`: first `Rock` then `Classic`.
+
+3. Values are added in order from the CLI `genre+=Rock genre+=Classic`: first
+   `Rock` then `Classic`.
+
+The order above is not impacted if the CLI options are unordered: `genre+=Rock
+genre=Blues` would still do the assignment first.
+
+The deletion `genre!` is always run last whatever its position. It keeps the
+compatibility with the actual `modify` command behavior. To reset a field before
+adding values, one must use `genre= genre+=Rock` or `artists= artists+=Eric`.
 
 ### Performance
 
