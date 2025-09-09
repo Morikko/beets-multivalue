@@ -5,19 +5,23 @@ with open("README.md", "r") as fh:
 
 setup(
     name="beets-multivalue",
-    version="0.1.0-dev2",
-    author="Eric MASSERAN",
+    version="0.2.0-dev1",
+    author="Eric Masseran",
     description="A beet plugin to manage multi-value fields",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    # url="https://github.com/...",
+    url="https://github.com/Morikko/beets-multivalue",
     packages=find_packages(),
     classifiers=[
-        # TODO: Python version definition
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
     install_requires=["beets>2"],
-    # TODO: License file
+    license="MIT",
 )
