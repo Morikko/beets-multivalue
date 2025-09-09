@@ -96,6 +96,49 @@ class MultiValueModifyCliTest(PluginTestCase):
 
     @parameterized.expand(
         [
+            ("list", "artists", ["Éric"], "artists+=#Èric", ["Éric"]),
+            ("list", "artists", ["Éric"], "artists-=#Èric", []),
+            ("string", "genre", "Éric", "genre+=#Èric", "Éric"),
+            ("string", "genre", "Éric", "genre-=#Èric", ""),
+        ]
+    )
+    def test_multivalue_operations_plugin(
+        self, field_type, field_name, initial_value, command, expected_value
+    ):
+        """
+        Check a query mode added by a plugin is supported.
+        """
+        # Hack: PluginTestCase only supports enabling a single plugin. This test
+        # needs a second one. Re-Execute the PluginMixin.load_plugins but
+        # without updating the original values. At the end of this test, the
+        # original unload_plugins() would be called to clean everything. No need
+        # to do it here.
+        #
+        # Clear cache to reload plugins
+        beets.plugins._instances.clear()
+        required_plugins = ("multivalue", "bareasc")
+        beets.config["plugins"] = required_plugins
+        beets.plugins.load_plugins(required_plugins)
+        beets.plugins.find_plugins()
+
+        if field_type == "string":
+            self.enable_string_field()
+
+        # Handle None initial value for string fields
+        if field_type == "string" and initial_value is None:
+            item = self.add_item(**{field_name: None})
+        else:
+            item = self.add_item(**{field_name: initial_value})
+
+        # Split command if it contains multiple operations
+        commands = command.split()
+        self.run_command("multivalue", "-y", *commands)
+        item.load()
+
+        assert getattr(item, field_name) == expected_value
+
+    @parameterized.expand(
+        [
             # comma_separator
             (",", "Classic", "genre+=Rock", "Classic,Rock"),
             # semicolon_separator

@@ -1,7 +1,7 @@
 from typing import Iterable, Literal, Optional, Tuple, Type
 
 import mediafile
-from beets import dbcore, library, ui
+from beets import dbcore, library, plugins, ui
 from beets.plugins import BeetsPlugin
 from beets.ui import Subcommand, UserError, decargs, print_
 from beets.ui.commands import _do_query, print_and_modify
@@ -37,6 +37,7 @@ class MultiValuePlugin(BeetsPlugin):
             ":": dbcore.query.RegexpQuery,
             "~": dbcore.query.StringQuery,
         }
+        prefixes.update(plugins.queries())
         return prefixes
 
     def commands(self):
