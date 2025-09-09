@@ -1,7 +1,7 @@
-from typing import Optional, Union
+from typing import Iterable, Literal, Optional, Tuple, Type
 
 import mediafile
-from beets import library, ui
+from beets import dbcore, library, ui
 from beets.plugins import BeetsPlugin
 from beets.ui import Subcommand, UserError, decargs, print_
 from beets.ui.commands import _do_query, print_and_modify
@@ -31,6 +31,13 @@ class MultiValuePlugin(BeetsPlugin):
     @property
     def string_multivalue_fields(self):
         return self.config["string_fields"].get(dict)
+
+    def get_prefixes(self):
+        prefixes = {
+            ":": dbcore.query.RegexpQuery,
+            "~": dbcore.query.StringQuery,
+        }
+        return prefixes
 
     def commands(self):
         return [self.get_command()]
@@ -87,17 +94,33 @@ class MultiValuePlugin(BeetsPlugin):
 
         return multi_command
 
-    def parse_key_val(self, value: str, action: str) -> Optional[tuple[str, str]]:
-        if action in value and ":" not in value.split(action, 1)[0]:
-            key, val = value.split(action, 1)
-            if (
-                key not in self.string_multivalue_fields
-                and key not in self.REAL_MULTIVALUE_FIELDS
-            ):
-                raise UserError(f"'{key}' is not a declared multivalue field")
-            return (key, val)
-        else:
+    def parse_key_val(
+        self, value: str, action: Literal["+", "-"]
+    ) -> Optional[Tuple[str, str, Type[dbcore.query.FieldQuery]]]:
+        """
+        Check if the value is doing an add or remove.
+        """
+        full_action = f"{action}="
+        if full_action not in value:
             return None
+
+        key, val = value.split(full_action, 1)
+
+        if ":" in key:
+            return None
+
+        if (
+            key not in self.string_multivalue_fields
+            and key not in self.REAL_MULTIVALUE_FIELDS
+        ):
+            raise UserError(f"'{key}' is not a declared multivalue field")
+
+        for pre, query_class in self.get_prefixes().items():
+            if val.startswith(pre):
+                return key, val[len(pre) :], query_class
+
+        # Exact match by default
+        return (key, val, dbcore.query.MatchQuery)
 
     def parse_args(self, args) -> tuple[list, dict, list, list, list]:
         query = []
@@ -107,12 +130,12 @@ class MultiValuePlugin(BeetsPlugin):
         removes = []
         for arg in args:
 
-            added_action = self.parse_key_val(arg, "+=")
+            added_action = self.parse_key_val(arg, "+")
             if added_action:
                 adds.append(added_action)
                 continue
 
-            removed_action = self.parse_key_val(arg, "-=")
+            removed_action = self.parse_key_val(arg, "-")
             if removed_action:
                 removes.append(removed_action)
                 continue
@@ -135,14 +158,19 @@ class MultiValuePlugin(BeetsPlugin):
         ``value``.
         """
         multi_values = value.split(separator) if len(value) > 0 else []
-        for a in adds:
-            if a not in multi_values:
-                multi_values.append(a)
-        for r in removes:
-            try:
-                multi_values.pop(multi_values.index(r))
-            except ValueError:
-                pass
+        for pattern, query in adds:
+            is_matching = False
+            for value in multi_values:
+                if query.value_match(pattern, value):
+                    is_matching = True
+
+            if not is_matching:
+                multi_values.append(pattern)
+
+        for pattern, query in removes:
+            multi_values = [
+                value for value in multi_values if not query.value_match(pattern, value)
+            ]
 
         return separator.join(multi_values)
 
@@ -151,12 +179,27 @@ class MultiValuePlugin(BeetsPlugin):
         Add all elements in ``adds`` and remove all elements in ``removes`` to
         ``values``.
         """
-        multi_values = [v for v in values if v not in removes]
-        for a in adds:
-            if a not in multi_values:
-                multi_values.append(a)
+        multi_values = values.copy()
+        for pattern, query in removes:
+            multi_values = [
+                value for value in multi_values if not query.value_match(pattern, value)
+            ]
+
+        for pattern, query in adds:
+            is_matching = False
+            for value in multi_values:
+                if query.value_match(pattern, value):
+                    is_matching = True
+
+            if not is_matching:
+                multi_values.append(pattern)
 
         return multi_values
+
+    def evaluate_template(
+        self, obj, values: Iterable[Tuple[str, Type[dbcore.query.FieldQuery]]]
+    ):
+        return [(obj.evaluate_template(a), query) for a, query in values]
 
     def modify_multi_items(
         self,
@@ -187,21 +230,21 @@ class MultiValuePlugin(BeetsPlugin):
         changes = []
 
         templates = {}
-        for key, value in adds:
+        for key, value, query in adds:
             if key not in templates:
                 templates[key] = {
                     "adds": [],
                     "removes": [],
                 }
-            templates[key]["adds"].append(functemplate.template(value))
+            templates[key]["adds"].append((functemplate.template(value), query))
 
-        for key, value in removes:
+        for key, value, query in removes:
             if key not in templates:
                 templates[key] = {
                     "adds": [],
                     "removes": [],
                 }
-            templates[key]["removes"].append(functemplate.template(value))
+            templates[key]["removes"].append((functemplate.template(value), query))
 
         for key, value in mods.items():
             templates[key] = functemplate.template(value)
@@ -218,19 +261,16 @@ class MultiValuePlugin(BeetsPlugin):
                         key,
                         self.update_string_multivalue(
                             obj.get(key, ""),
-                            [obj.evaluate_template(a) for a in templates[key]["adds"]],
-                            [
-                                obj.evaluate_template(r)
-                                for r in templates[key]["removes"]
-                            ],
+                            self.evaluate_template(obj, templates[key]["adds"]),
+                            self.evaluate_template(obj, templates[key]["removes"]),
                             self.string_multivalue_fields[key],
                         ),
                     )
                 else:
                     obj_mods[key] = self.update_list_multivalue(
                         obj.get(key, []),
-                        [obj.evaluate_template(a) for a in templates[key]["adds"]],
-                        [obj.evaluate_template(r) for r in templates[key]["removes"]],
+                        self.evaluate_template(obj, templates[key]["adds"]),
+                        self.evaluate_template(obj, templates[key]["removes"]),
                     )
 
             if print_and_modify(obj, obj_mods, dels) and obj not in changed:

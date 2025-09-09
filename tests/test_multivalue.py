@@ -37,6 +37,12 @@ class MultiValueModifyCliTest(PluginTestCase):
             ("list", "artists", ["Eric"], "artists-=Eric", []),
             # list_add_first
             ("list", "artists", [], "artists+=Eric", ["Eric"]),
+            # list_add_match_insensitive
+            ("list", "artists", ["Eric"], "artists+=~Eric", ["Eric"]),
+            ("list", "artists", ["eric"], "artists+=~Eric", ["eric"]),
+            # list_remove_match_insensitive
+            ("list", "artists", ["Eric"], "artists-=~Eric", []),
+            ("list", "artists", ["eric"], "artists-=~Eric", []),
             # string_add_value
             ("string", "genre", "Classic", "genre+=Rock", "Classic,Rock"),
             # string_remove_value
@@ -60,6 +66,12 @@ class MultiValueModifyCliTest(PluginTestCase):
             ("string", "genre", None, "genre+=Classic", "Classic"),
             # string_add_first_empty
             ("string", "genre", "", "genre+=Classic", "Classic"),
+            # string_add_match_insensitive
+            ("string", "genre", "Classic", "genre+=~Classic", "Classic"),
+            ("string", "genre", "classic", "genre+=~Classic", "classic"),
+            # string_remove_match_insensitive
+            ("string", "genre", "Classic", "genre-=~Classic", ""),
+            ("string", "genre", "classic", "genre-=~Classic", ""),
         ]
     )
     def test_multivalue_operations(
