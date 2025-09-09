@@ -14,46 +14,54 @@ class MultiValueModifyCliTest(PluginTestCase):
     # Multi-value cases
     ##
 
-    @parameterized.expand([
-        # list_add_value
-        ("list", "artists", ["Eric"], "artists+=Jamel", ["Eric", "Jamel"]),
-        # list_remove_value
-        ("list", "artists", ["Eric", "Jamel"], "artists-=Jamel", ["Eric"]),
-        # list_double_action
-        (
-            "list",
-            "artists",
-            ["Eric", "Jamel"],
-            "artists-=Jamel artists+=Jean",
-            ["Eric", "Jean"],
-        ),
-        # list_remove_no_match
-        ("list", "artists", ["Eric"], "artists-=Jamel", ["Eric"]),
-        # list_remove_last
-        ("list", "artists", ["Eric"], "artists-=Eric", []),
-        # list_add_first
-        ("list", "artists", [], "artists+=Eric", ["Eric"]),
-        # string_add_value
-        ("string", "genre", "Classic", "genre+=Rock", "Classic,Rock"),
-        # string_remove_value
-        ("string", "genre", "Classic,Rock", "genre-=Rock", "Classic"),
-        # string_double_action
-        (
-            "string",
-            "genre",
-            "Classic,Rock",
-            "genre-=Rock genre+=Blues-Chill",
-            "Classic,Blues-Chill",
-        ),
-        # string_remove_no_match
-        ("string", "genre", "Classic", "genre-=Blues", "Classic"),
-        # string_remove_last
-        ("string", "genre", "Classic", "genre-=Classic", ""),
-        # string_add_first_none
-        ("string", "genre", None, "genre+=Classic", "Classic"),
-        # string_add_first_empty
-        ("string", "genre", "", "genre+=Classic", "Classic"),
-    ])
+    @parameterized.expand(
+        [
+            # list_add_value
+            ("list", "artists", ["Eric"], "artists+=Jamel", ["Eric", "Jamel"]),
+            # list_remove_value
+            ("list", "artists", ["Eric", "Jamel"], "artists-=Jamel", ["Eric"]),
+            # list_double_action
+            (
+                "list",
+                "artists",
+                ["Eric", "Jamel"],
+                "artists-=Jamel artists+=Jean",
+                ["Eric", "Jean"],
+            ),
+            # list_add_existing default is exact match
+            ("list", "artists", ["Eric"], "artists+=Eric", ["Eric"]),
+            ("list", "artists", ["eric"], "artists+=Eric", ["eric", "Eric"]),
+            # list_remove_no_match
+            ("list", "artists", ["Eric"], "artists-=Jamel", ["Eric"]),
+            # list_remove_last
+            ("list", "artists", ["Eric"], "artists-=Eric", []),
+            # list_add_first
+            ("list", "artists", [], "artists+=Eric", ["Eric"]),
+            # string_add_value
+            ("string", "genre", "Classic", "genre+=Rock", "Classic,Rock"),
+            # string_remove_value
+            ("string", "genre", "Classic,Rock", "genre-=Rock", "Classic"),
+            # string_double_action
+            (
+                "string",
+                "genre",
+                "Classic,Rock",
+                "genre-=Rock genre+=Blues-Chill",
+                "Classic,Blues-Chill",
+            ),
+            # string_add_existing default is exact match
+            ("string", "genre", "Classic", "genre+=Classic", "Classic"),
+            ("string", "genre", "classic", "genre+=Classic", "classic,Classic"),
+            # string_remove_no_match
+            ("string", "genre", "Classic", "genre-=Blues", "Classic"),
+            # string_remove_last
+            ("string", "genre", "Classic", "genre-=Classic", ""),
+            # string_add_first_none
+            ("string", "genre", None, "genre+=Classic", "Classic"),
+            # string_add_first_empty
+            ("string", "genre", "", "genre+=Classic", "Classic"),
+        ]
+    )
     def test_multivalue_operations(
         self, field_type, field_name, initial_value, command, expected_value
     ):
@@ -74,14 +82,16 @@ class MultiValueModifyCliTest(PluginTestCase):
 
         assert getattr(item, field_name) == expected_value
 
-    @parameterized.expand([
-        # comma_separator
-        (",", "Classic", "genre+=Rock", "Classic,Rock"),
-        # semicolon_separator
-        (";", "Classic", "genre+=Blues", "Classic;Blues"),
-        # pipe_separator
-        ("|", "Rock", "genre+=Pop", "Rock|Pop"),
-    ])
+    @parameterized.expand(
+        [
+            # comma_separator
+            (",", "Classic", "genre+=Rock", "Classic,Rock"),
+            # semicolon_separator
+            (";", "Classic", "genre+=Blues", "Classic;Blues"),
+            # pipe_separator
+            ("|", "Rock", "genre+=Pop", "Rock|Pop"),
+        ]
+    )
     def test_string_separators(self, separator, initial_value, command, expected_value):
         """Test different string field separators"""
         self.enable_string_field(separator)
@@ -100,22 +110,24 @@ class MultiValueModifyCliTest(PluginTestCase):
     # Compatibility with standard modify command
     ###
 
-    @parameterized.expand([
-        # basic_field_assignment
-        (
-            {"genre": "Rock", "grouping": "Old Artist"},
-            ["genre=Blues"],
-            {"genre": "Blues"},
-            {"grouping": "Old Artist"},
-        ),
-        # multiple_field_assignments
-        (
-            {"grouping": "Old Title", "genre": "Rock", "year": 2020},
-            ["grouping=New Title", "year=2023"],
-            {"grouping": "New Title", "year": 2023},
-            {"genre": "Rock"},
-        ),
-    ])
+    @parameterized.expand(
+        [
+            # basic_field_assignment
+            (
+                {"genre": "Rock", "grouping": "Old Artist"},
+                ["genre=Blues"],
+                {"genre": "Blues"},
+                {"grouping": "Old Artist"},
+            ),
+            # multiple_field_assignments
+            (
+                {"grouping": "Old Title", "genre": "Rock", "year": 2020},
+                ["grouping=New Title", "year=2023"],
+                {"grouping": "New Title", "year": 2023},
+                {"genre": "Rock"},
+            ),
+        ]
+    )
     def test_compatibility_with_modify_basic_field(
         self, initial_fields, commands, expected_fields, unchanged_fields
     ):
@@ -156,22 +168,24 @@ class MultiValueModifyCliTest(PluginTestCase):
         assert item2.genre == ""  # Should remain unchanged
         assert item3.genre == "Rock"
 
-    @parameterized.expand([
-        # single_field_deletion
-        (
-            {"grouping": "Test Song", "genre": "Rock", "year": 2023},
-            "genre!",
-            {"genre": ""},
-            {"grouping": "Test Song", "year": 2023},
-        ),
-        # multiple_field_deletions
-        (
-            {"grouping": "Test Song", "genre": "Rock", "year": 2023},
-            "grouping! year!",
-            {"grouping": "", "year": 0},
-            {"genre": "Rock"},
-        ),
-    ])
+    @parameterized.expand(
+        [
+            # single_field_deletion
+            (
+                {"grouping": "Test Song", "genre": "Rock", "year": 2023},
+                "genre!",
+                {"genre": ""},
+                {"grouping": "Test Song", "year": 2023},
+            ),
+            # multiple_field_deletions
+            (
+                {"grouping": "Test Song", "genre": "Rock", "year": 2023},
+                "grouping! year!",
+                {"grouping": "", "year": 0},
+                {"genre": "Rock"},
+            ),
+        ]
+    )
     def test_compatibility_with_modify_field_deletion(
         self, initial_fields, deletion_command, expected_deletions, unchanged_fields
     ):
@@ -205,12 +219,14 @@ class MultiValueModifyCliTest(PluginTestCase):
         assert item.year == 0
         assert item.genre == "Rock,Pop,Jazz"
 
-    @parameterized.expand([
-        # write_nomove_options
-        (["-y", "--write", "--nomove"], "grouping=New Title", "New Title"),
-        # nowrite_option
-        (["-y", "--nowrite"], "grouping=New Title", "New Title"),
-    ])
+    @parameterized.expand(
+        [
+            # write_nomove_options
+            (["-y", "--write", "--nomove"], "grouping=New Title", "New Title"),
+            # nowrite_option
+            (["-y", "--nowrite"], "grouping=New Title", "New Title"),
+        ]
+    )
     def test_compatibility_with_modify_command_options(
         self, options, command, expected_value
     ):
