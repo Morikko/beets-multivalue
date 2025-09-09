@@ -9,6 +9,21 @@ from beets.util import functemplate
 
 SearchTuple = tuple[str, Type[dbcore.query.FieldQuery]]
 
+example_usage = """
+Examples:
+beet multimodify grouping+="Hard Rock" <query>
+beet multi genre+="Classic Rock" genre-="Hard Rock" <query>
+beet multi genre+="Classic Rock" genre-="Hard Rock" year! title="Best song"
+beet multimodify grouping+="Rock" <query>
+beet multimodify grouping+=~rock <query>
+beet multimodify artists+=#Éric <query>
+beet multimodify grouping-="Blues" <query>
+beet multimodify grouping-=~rock <query>
+beet multimodify artists-=#Eric <query>
+beet multimodify artists-=:E?ic <query>
+beet mm 'genre-=:Rock.+' genre+=Rock <query>
+"""
+
 
 class MultiValuePlugin(BeetsPlugin):
     """
@@ -51,6 +66,7 @@ class MultiValuePlugin(BeetsPlugin):
             help="modify command with add/remove in multi-value tags",
             aliases=("multi", "mm"),
         )
+        multi_command.parser.usage += example_usage
         multi_command.parser.add_option(
             "-m",
             "--move",
