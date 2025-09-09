@@ -1,119 +1,94 @@
 import beets
 import pytest
 from beets.test.helper import PluginTestCase
+from parameterized import parameterized
 
 
 class MultiValueModifyCliTest(PluginTestCase):
     plugin = "multivalue"
 
-    ###
-    # Real multi-value
-    ###
-
-    def test_list_add_value(self):
-        self.enable_string_field()
-        item = self.add_item(artists=["Eric"])
-        self.run_command("multivalue", "-y", "artists+=Jamel")
-        item.load()
-        assert item.artists == ["Eric", "Jamel"]
-
-    def test_list_remove_value(self):
-        self.enable_string_field()
-        item = self.add_item(artists=["Eric", "Jamel"])
-        self.run_command("multivalue", "-y", "artists-=Jamel")
-        item.load()
-        assert item.artists == ["Eric"]
-
-    def test_list_double_action(self):
-        self.enable_string_field()
-        item = self.add_item(artists=["Eric", "Jamel"])
-        self.run_command("multivalue", "-y", "artists-=Jamel", "artists+=Jean")
-        item.load()
-        assert item.artists == ["Eric", "Jean"]
-
-    def test_list_remove_no_match(self):
-        self.enable_string_field()
-        item = self.add_item(artists=["Eric"])
-        self.run_command("multivalue", "-y", "artists-=Jamel")
-        item.load()
-        assert item.artists == ["Eric"]
-
-    def test_list_remove_last(self):
-        self.enable_string_field()
-        item = self.add_item(artists=["Eric"])
-        self.run_command("multivalue", "-y", "artists-=Eric")
-        item.load()
-        assert item.artists == []
-
-    def test_list_add_first(self):
-        self.enable_string_field()
-        item = self.add_item(artists=[])
-        self.run_command("multivalue", "-y", "artists+=Eric")
-        item.load()
-        assert item.artists == ["Eric"]
-
-    ###
-    # String multi-value
-    ###
-
     def enable_string_field(self, sep=","):
         self.config["multivalue"]["string_fields"] = {"genre": sep}
 
-    def test_string_add_value(self):
-        self.enable_string_field()
-        item = self.add_item(genre="Classic")
-        self.run_command("multivalue", "-y", "genre+=Rock")
-        item.load()
-        assert item.genre == "Classic,Rock"
+    ##
+    # Multi-value cases
+    ##
 
-    def test_string_remove_value(self):
-        self.enable_string_field()
-        item = self.add_item(genre="Classic,Rock")
-        self.run_command("multivalue", "-y", "genre-=Rock")
-        item.load()
-        assert item.genre == "Classic"
+    @parameterized.expand([
+        # list_add_value
+        ("list", "artists", ["Eric"], "artists+=Jamel", ["Eric", "Jamel"]),
+        # list_remove_value
+        ("list", "artists", ["Eric", "Jamel"], "artists-=Jamel", ["Eric"]),
+        # list_double_action
+        (
+            "list",
+            "artists",
+            ["Eric", "Jamel"],
+            "artists-=Jamel artists+=Jean",
+            ["Eric", "Jean"],
+        ),
+        # list_remove_no_match
+        ("list", "artists", ["Eric"], "artists-=Jamel", ["Eric"]),
+        # list_remove_last
+        ("list", "artists", ["Eric"], "artists-=Eric", []),
+        # list_add_first
+        ("list", "artists", [], "artists+=Eric", ["Eric"]),
+        # string_add_value
+        ("string", "genre", "Classic", "genre+=Rock", "Classic,Rock"),
+        # string_remove_value
+        ("string", "genre", "Classic,Rock", "genre-=Rock", "Classic"),
+        # string_double_action
+        (
+            "string",
+            "genre",
+            "Classic,Rock",
+            "genre-=Rock genre+=Blues-Chill",
+            "Classic,Blues-Chill",
+        ),
+        # string_remove_no_match
+        ("string", "genre", "Classic", "genre-=Blues", "Classic"),
+        # string_remove_last
+        ("string", "genre", "Classic", "genre-=Classic", ""),
+        # string_add_first_none
+        ("string", "genre", None, "genre+=Classic", "Classic"),
+        # string_add_first_empty
+        ("string", "genre", "", "genre+=Classic", "Classic"),
+    ])
+    def test_multivalue_operations(
+        self, field_type, field_name, initial_value, command, expected_value
+    ):
+        """Test various multivalue operations for both list and string fields"""
+        if field_type == "string":
+            self.enable_string_field()
 
-    def test_string_double_action(self):
-        self.enable_string_field()
-        item = self.add_item(genre="Classic,Rock")
-        self.run_command("multivalue", "-y", "genre-=Rock", "genre+=Blues Chill")
-        item.load()
-        assert item.genre == "Classic,Blues Chill"
+        # Handle None initial value for string fields
+        if field_type == "string" and initial_value is None:
+            item = self.add_item(**{field_name: None})
+        else:
+            item = self.add_item(**{field_name: initial_value})
 
-    def test_string_remove_no_match(self):
-        self.enable_string_field()
-        item = self.add_item(genre="Classic")
-        self.run_command("multivalue", "-y", "genre-=Blues")
+        # Split command if it contains multiple operations
+        commands = command.split()
+        self.run_command("multivalue", "-y", *commands)
         item.load()
-        assert item.genre == "Classic"
 
-    def test_string_remove_last(self):
-        self.enable_string_field()
-        item = self.add_item(genre="Classic")
-        self.run_command("multivalue", "-y", "genre-=Classic")
+        assert getattr(item, field_name) == expected_value
+
+    @parameterized.expand([
+        # comma_separator
+        (",", "Classic", "genre+=Rock", "Classic,Rock"),
+        # semicolon_separator
+        (";", "Classic", "genre+=Blues", "Classic;Blues"),
+        # pipe_separator
+        ("|", "Rock", "genre+=Pop", "Rock|Pop"),
+    ])
+    def test_string_separators(self, separator, initial_value, command, expected_value):
+        """Test different string field separators"""
+        self.enable_string_field(separator)
+        item = self.add_item(genre=initial_value)
+        self.run_command("multivalue", "-y", command)
         item.load()
-        assert item.genre == ""
-
-    def test_string_add_first(self):
-        self.enable_string_field()
-        item = self.add_item(genre=None)
-        self.run_command("multivalue", "-y", "genre+=Classic")
-        item.load()
-        assert item.genre == "Classic"
-
-        item.genre = ""
-        item.store()
-
-        self.run_command("multivalue", "-y", "genre+=Classic")
-        item.load()
-        assert item.genre == "Classic"
-
-    def test_string_other_sep(self):
-        self.enable_string_field(";")
-        item = self.add_item(genre="Classic")
-        self.run_command("multivalue", "-y", "genre+=Blues")
-        item.load()
-        assert item.genre == "Classic;Blues"
+        assert item.genre == expected_value
 
     def test_string_unset(self):
         with pytest.raises(
@@ -125,25 +100,41 @@ class MultiValueModifyCliTest(PluginTestCase):
     # Compatibility with standard modify command
     ###
 
-    def test_compatibility_with_modify_basic_field(self):
+    @parameterized.expand([
+        # basic_field_assignment
+        (
+            {"genre": "Rock", "grouping": "Old Artist"},
+            ["genre=Blues"],
+            {"genre": "Blues"},
+            {"grouping": "Old Artist"},
+        ),
+        # multiple_field_assignments
+        (
+            {"grouping": "Old Title", "genre": "Rock", "year": 2020},
+            ["grouping=New Title", "year=2023"],
+            {"grouping": "New Title", "year": 2023},
+            {"genre": "Rock"},
+        ),
+    ])
+    def test_compatibility_with_modify_basic_field(
+        self, initial_fields, commands, expected_fields, unchanged_fields
+    ):
         """
-        Test that multivalue command behaves the same as modify for basic
-        field updates
+        Test that multivalue command behaves the same as modify for basic field updates
         """
-        # Test with a basic field that's not multivalue
-        item = self.add_item(genre="Rock", grouping="Old Artist")
+        item = self.add_item(**initial_fields)
 
-        # Use multivalue command to set a basic field (should work like modify)
-        self.run_command("multivalue", "-y", "genre=Blues")
+        # Split command if it contains multiple operations
+        self.run_command("multivalue", "-y", *commands)
         item.load()
-        assert item.genre == "Blues"
-        assert item.grouping == "Old Artist"  # Should remain unchanged
 
-        # Test with multiple basic fields
-        self.run_command("multivalue", "-y", "grouping=New Artist", "year=2023")
-        item.load()
-        assert item.grouping == "New Artist"
-        assert item.year == 2023
+        # Check expected changes
+        for field, expected_value in expected_fields.items():
+            assert getattr(item, field) == expected_value
+
+        # Check unchanged fields
+        for field, expected_value in unchanged_fields.items():
+            assert getattr(item, field) == expected_value
 
     def test_compatibility_with_modify_query_behavior(self):
         """Test that multivalue command uses the same query behavior as modify"""
@@ -165,22 +156,40 @@ class MultiValueModifyCliTest(PluginTestCase):
         assert item2.genre == ""  # Should remain unchanged
         assert item3.genre == "Rock"
 
-    def test_compatibility_with_modify_field_deletion(self):
+    @parameterized.expand([
+        # single_field_deletion
+        (
+            {"grouping": "Test Song", "genre": "Rock", "year": 2023},
+            "genre!",
+            {"genre": ""},
+            {"grouping": "Test Song", "year": 2023},
+        ),
+        # multiple_field_deletions
+        (
+            {"grouping": "Test Song", "genre": "Rock", "year": 2023},
+            "grouping! year!",
+            {"grouping": "", "year": 0},
+            {"genre": "Rock"},
+        ),
+    ])
+    def test_compatibility_with_modify_field_deletion(
+        self, initial_fields, deletion_command, expected_deletions, unchanged_fields
+    ):
         """Test that multivalue command supports field deletion like modify"""
-        item = self.add_item(grouping="Test Song", genre="Rock", year=2023)
+        item = self.add_item(**initial_fields)
 
-        # Test field deletion with !
-        self.run_command("multivalue", "-y", "genre!")
+        # Split command if it contains multiple operations
+        commands = deletion_command.split()
+        self.run_command("multivalue", "-y", *commands)
         item.load()
-        assert item.genre == ""
-        assert item.grouping == "Test Song"  # Should remain unchanged
-        assert item.year == 2023  # Should remain unchanged
 
-        # Test multiple field deletions
-        self.run_command("multivalue", "-y", "grouping!", "year!")
-        item.load()
-        assert item.grouping == ""
-        assert item.year == 0
+        # Check deleted fields
+        for field, expected_value in expected_deletions.items():
+            assert getattr(item, field) == expected_value
+
+        # Check unchanged fields
+        for field, expected_value in unchanged_fields.items():
+            assert getattr(item, field) == expected_value
 
     def test_compatibility_with_modify_mixed_operations(self):
         """Test that multivalue command supports mixed operations like modify"""
@@ -196,24 +205,26 @@ class MultiValueModifyCliTest(PluginTestCase):
         assert item.year == 0
         assert item.genre == "Rock,Pop,Jazz"
 
-    def test_compatibility_with_modify_command_options(self):
+    @parameterized.expand([
+        # write_nomove_options
+        (["-y", "--write", "--nomove"], "grouping=New Title", "New Title"),
+        # nowrite_option
+        (["-y", "--nowrite"], "grouping=New Title", "New Title"),
+    ])
+    def test_compatibility_with_modify_command_options(
+        self, options, command, expected_value
+    ):
         """Test that multivalue command accepts the same options as modify command"""
-        item = self.add_item(grouping="Test Song")
+        # Extract field name from command for item creation
+        field_name = command.split("=")[0]
+        item = self.add_item(**{field_name: "Old Value"})
 
-        # Test that multivalue command accepts common modify options
-        # --write, --nowrite, --move, --nomove, --yes
-        self.run_command(
-            "multivalue", "-y", "--write", "--nomove", "grouping=New Title"
-        )
+        # Run command with options
+        self.run_command("multivalue", *options, command)
         item.load()
-        assert item.grouping == "New Title"
 
-        # Test --nowrite option
-        item.grouping = "Old Title"
-        item.store()
-        self.run_command("multivalue", "-y", "--nowrite", "grouping=New Title")
-        item.load()
-        assert item.grouping == "New Title"  # Should still update in database
+        # Check that the field was updated
+        assert getattr(item, field_name) == expected_value
 
     def test_compatibility_with_modify_no_matching_items(self):
         """Test that multivalue command has similar error handling to modify"""
