@@ -43,7 +43,7 @@ class MultiValuePlugin(BeetsPlugin):
 
     def __init__(self):
         super().__init__()
-        self.config.add({"string_fields": {}})
+        self.config.add({"string_fields": {}, "fix_media_fields": False})
         self.init_fix_media_field()
 
     @property
@@ -401,7 +401,6 @@ class MultiValuePlugin(BeetsPlugin):
         "grouping" field was using the wrong fields for MP3 and ASF storage. Add the
         "work" field as well as it was those fields used.
         """
-        self.config.add({"fix_media_fields": False})
         if self.config["fix_media_fields"].get(bool):
             self.fix_grouping_work_field()
 
