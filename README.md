@@ -6,6 +6,14 @@ belonging to the same context.
 This plugin provides a boosted modify command to also add/remove values in
 multi-value tag. It can also fix `grouping` field and add `work` field.
 
+## Installation
+
+```sh
+pip install beets-multivalue
+```
+
+Pypi: https://pypi.org/project/beets-multivalue
+
 ## Beet official list tags
 
 A few fields already support native multi-values separated with `\␀`. Those are
