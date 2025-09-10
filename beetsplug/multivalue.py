@@ -12,8 +12,8 @@ SearchTuple = tuple[str, Type[dbcore.query.FieldQuery]]
 example_usage = """
 Examples:
 beet multimodify grouping+="Hard Rock" <query>
-beet multi genre+="Classic Rock" genre-="Hard Rock" <query>
-beet multi genre+="Classic Rock" genre-="Hard Rock" year! title="Best song"
+beet mmod genre+="Classic Rock" genre-="Hard Rock" <query>
+beet mmod genre+="Classic Rock" genre-="Hard Rock" year! title="Best song"
 beet multimodify grouping+="Rock" <query>
 beet multimodify grouping+=~rock <query>
 beet multimodify artists+=#Éric <query>
@@ -65,7 +65,7 @@ class MultiValuePlugin(BeetsPlugin):
         multi_command = Subcommand(
             "multimodify",
             help="modify command with add/remove in multi-value tags",
-            aliases=("multi", "mm"),
+            aliases=("mmod", "mm"),
         )
         multi_command.parser.usage += example_usage
         multi_command.parser.add_option(

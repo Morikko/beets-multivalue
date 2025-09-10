@@ -55,11 +55,11 @@ beet multimodify grouping+="Hard Rock" <query>
 # genre: Rock,Hard Rock
 
 # Add and remove values
-beet multi genre+="Classic Rock" genre-="Hard Rock" <query>
+beet mmod genre+="Classic Rock" genre-="Hard Rock" <query>
 # genre: Rock,Classic Rock
 
 # Original modify command still applies
-beet multi genre+="Classic Rock" genre-="Hard Rock" year! title="Best song"
+beet mmod genre+="Classic Rock" genre-="Hard Rock" year! title="Best song"
 
 # Adding the same value is detected and avoided. By default, exact match is applied.
 # It is easy to remember, there is the "=", the same used in a regular query.

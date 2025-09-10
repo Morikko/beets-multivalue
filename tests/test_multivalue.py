@@ -235,7 +235,7 @@ class MultiValueModifyCliTest(PluginTestCase):
 
     @parameterized.expand(
         [
-            ("multi",),
+            ("mmod",),
             ("mm",),
         ]
     )
