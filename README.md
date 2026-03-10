@@ -171,8 +171,9 @@ A/ Sub-Optimal Diff
 
 The diff may be sub-optimal as it does not know about the separator. In the
 following example "OST" is not highlighted continuously although the
-final change is still accurate: `Christmas,**Classic** Rock,**Rock** -> Hard
-Rock,Rock`.
+final change is still accurate:
+
+> Hard Rock,<b>Classic </b>Rock<b>,Rock</b> -> Hard Rock,Rock
 
 B/ Relation to the original modify command
 

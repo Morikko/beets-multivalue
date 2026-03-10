@@ -18,6 +18,13 @@ class MultiValueModifyCliTest(PluginTestCase):
         [
             # list_add_value
             ("list", "artists", ["Eric"], "artists+=Jamel", ["Eric", "Jamel"]),
+            (
+                "list",
+                "artists",
+                ["Eric"],
+                "artists+=Jamel\\␀John",
+                ["Eric", "Jamel", "John"],
+            ),
             # list_remove_value
             ("list", "artists", ["Eric", "Jamel"], "artists-=Jamel", ["Eric"]),
             ("list", "artists", ["Jamel", "Eric", "Jamel"], "artists-=Jamel", ["Eric"]),
@@ -267,8 +274,8 @@ class MultiValueModifyCliTest(PluginTestCase):
             # multiple_field_assignments
             (
                 {"label": "Old Title", "grouping": "Rock", "year": 2020},
-                ["label=New Title", "year=2023"],
-                {"label": "New Title", "year": 2023},
+                ["label=New Title", "year=2023", "artists=Jamel; John"],
+                {"label": "New Title", "year": 2023, "artists": ["Jamel", "John"]},
                 {"grouping": "Rock"},
             ),
         ]
