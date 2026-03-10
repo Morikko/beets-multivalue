@@ -32,11 +32,10 @@ fields are:
 
 ## String multi-value tags
 
-Some fields do not support multi-values yet like
-[genre](https://github.com/beetbox/beets/pull/5426) or some may never support it
-as not a "standard" like `grouping`.
+Some fields do not support multi-values yet or some may never support it as not
+a "standard" like `grouping`.
 
-An example could be to add multiple genres separated by a comma: `Rock,Hard Rock`
+An example could be to add multiple `grouping` separated by a comma: `Kids,Christmas`
 
 Some external tools also supports custom separator splitting like
 [navidrome](https://www.navidrome.org/docs/usage/customtags/#changing-separators)
@@ -49,7 +48,7 @@ explicitly defined in the configuration with the expected separator:
 multivalue:
   string_fields:
     grouping: ";"
-    genre: ","
+    language: ","
 ```
 
 ## Multi Modify Command
@@ -57,28 +56,29 @@ multivalue:
 ### Usage
 
 ```shell
-# Initial: genre: Rock
+# Initial set: grouping: Kid
+beet multimodify grouping="Kid"
 
 # Add a value
-beet multimodify grouping+="Hard Rock" <query>
-# genre: Rock,Hard Rock
+beet multimodify grouping+="Christmas" <query>
+# grouping: Kid,Christmas
 
 # Add and remove values
-beet mmod genre+="Classic Rock" genre-="Hard Rock" <query>
-# genre: Rock,Classic Rock
+beet mmod grouping+="OST" grouping-="Christmas" <query>
+# grouping: Kid,OST
 
 # Original modify command still applies
-beet mmod genre+="Classic Rock" genre-="Hard Rock" year! title="Best song"
+beet mmod grouping+="OST" grouping-="Christmas" year! title="Best song"
 
 # Adding the same value is detected and avoided. By default, exact match is applied.
 # It is easy to remember, there is the "=", the same used in a regular query.
-# Initial: genre: Rock
-beet multimodify grouping+="Rock" <query>
-# genre: Rock
+# Initial: grouping: Kid
+beet multimodify grouping+="Kid" <query>
+# grouping: Kid
 
 # For case insensitivity, add "~" as in a regular query.
-beet multimodify grouping+=~rock <query>
-# genre: Rock
+beet multimodify grouping+=~kid <query>
+# grouping: Kid
 
 # It is also possible to use the ones from a plugin by adding the equivalent prefix.
 # For example with bareasc set to the prefix "#".
@@ -88,14 +88,14 @@ beet multimodify artists+=#Éric <query>
 
 # The same work for removing
 
-# Initial: genre: Rock
-beet multimodify grouping-="Blues" <query>
+# Initial: grouping: Kid
+beet multimodify grouping-="Party" <query>
 # No change
 
 # For case insensitivity, add "~" as in a regular query
-# Initial: genre: Rock
-beet multimodify grouping-=~rock <query>
-# genre: ""
+# Initial: grouping: Kid
+beet multimodify grouping-=~kid <query>
+# grouping: ""
 
 # For bareasc set to the prefix "#"
 # Initial: artists: [Éric]
@@ -109,22 +109,22 @@ beet multimodify artists-=:E?ic <query>
 
 # Adding can not support regex as else the regex itself would be added. 
 # If you want to harmonize the data, you may remove and add at the same time.
-# Initial: genre: Rock&Roll
-beet multimodify 'genre-=:Rock.+' genre+=Rock <query>
-# genre: Rock
+# Initial: grouping: Video Games
+beet multimodify 'grouping-=:Video.+' grouping+=Kid <query>
+# grouping: Kid
 
 # Order of execution
-# genre: original
-beet mm genre+=base genre-=base genre=base,pivot
-# genre: pivot,base
+# grouping: original
+beet mm grouping+=base grouping-=base grouping=base,pivot
+# grouping: pivot,base
 
 # Deletion always win
-beet mm genre! genre+=base genre-=base genre=base,pivot
-# genre:
+beet mm grouping! grouping+=base grouping-=base grouping=base,pivot
+# grouping:
 
 # Reset field first
-beet mm  genre= genre+=new genre-=new2
-# genre: new,new2
+beet mm  grouping= grouping+=new grouping-=new2
+# grouping: new,new2
 ```
 
 The command is influenced by the `modify` one and provides the same flags. By
@@ -133,23 +133,24 @@ recommended to avoid any data loss.
 
 ### Order of execution
 
-1. Direct assignment are always run first: `genre=Rock`. If multiple assignments
+1. Direct assignment are always run first: `grouping=Kid`. If multiple assignments
    on the same field are written, the last one win.
 
-2. Values are removed: `genre-=Rock`. It allows to do some pre-cleaning before
-   adding values in the same run. Always with capital R: `genre-=rock
-   genre+=Rock`. Values are removed in order from the CLI `genre-=Rock
-   genre-=Classic`: first `Rock` then `Classic`.
+2. Values are removed: `grouping`. It allows to do some pre-cleaning before
+   adding values in the same run. Always with capital R: `grouping-=kid
+   grouping+=Kid`. Values are removed in order from the CLI `grouping-=Kid
+   grouping-=Classic`: first `Kid` then `Classic`.
 
-3. Values are added in order from the CLI `genre+=Rock genre+=Classic`: first
-   `Rock` then `Classic`.
+3. Values are added in order from the CLI `grouping+=Kid grouping+=Classic`:
+   first `Kid` then `Classic`.
 
-The order above is not impacted if the CLI options are unordered: `genre+=Rock
-genre=Blues` would still do the assignment first.
+The order above is not impacted if the CLI options are unordered: `grouping+=Kid
+grouping=Party` would still do the assignment first.
 
-The deletion `genre!` is always run last whatever its position. It keeps the
+The deletion `grouping!` is always run last whatever its position. It keeps the
 compatibility with the actual `modify` command behavior. To reset a field before
-adding values, one must use `genre= genre+=Rock` or `artists= artists+=Eric`.
+adding values, one must use `grouping= grouping+=Kid` or `artists=
+artists+=Eric`.
 
 ### Performance
 
@@ -157,11 +158,11 @@ To optimize performance and avoid iterating over a lot of data, the query should
 prune items as much as possible.
 
 ```sh
-# Only iterate over items without the Rock word in genre
-beet multimodify genre+=Rock '^genre:Rock'
+# Only iterate over items without the Kid word in grouping
+beet multimodify grouping+=Kid '^grouping:Kid'
 
-# Only iterate over items with the Rock word in genre
-beet multimodify genre-=Rock 'genre:Rock'
+# Only iterate over items with the Kid word in grouping
+beet multimodify grouping-=Kid 'grouping:Kid'
 ```
 
 ### Limitation
@@ -169,9 +170,9 @@ beet multimodify genre-=Rock 'genre:Rock'
 A/ Sub-Optimal Diff
 
 The diff may be sub-optimal as it does not know about the separator. In the
-following example "Classic Rock" is not highlighted continuously although the
-final change is still accurate: `genre: Hard Rock,**Classic** Rock,**Rock** ->
-Hard Rock,Rock`.
+following example "OST" is not highlighted continuously although the
+final change is still accurate: `Christmas,**Classic** Rock,**Rock** -> Hard
+Rock,Rock`.
 
 B/ Relation to the original modify command
 

@@ -19,17 +19,17 @@ SearchTuple = tuple[str, Type[dbcore.query.FieldQuery]]
 
 example_usage = """
 Examples:
-beet multimodify grouping+="Hard Rock" <query>
-beet mmod genre+="Classic Rock" genre-="Hard Rock" <query>
-beet mmod genre+="Classic Rock" genre-="Hard Rock" year! title="Best song"
-beet multimodify grouping+="Rock" <query>
-beet multimodify grouping+=~rock <query>
+beet multimodify grouping+="Kid" <query>
+beet mmod grouping+="Christmas" grouping-="OST" <query>
+beet mmod grouping+="Christmas" grouping-="OST" year! title="Best song"
+beet multimodify grouping+="Kid" <query>
+beet multimodify grouping+=~kid <query>
 beet multimodify artists+=#Éric <query>
-beet multimodify grouping-="Blues" <query>
-beet multimodify grouping-=~rock <query>
+beet multimodify grouping-="Christmas" <query>
+beet multimodify grouping-=~kid <query>
 beet multimodify artists-=#Eric <query>
 beet multimodify artists-=:E?ic <query>
-beet mm 'genre-=:Rock.+' genre+=Rock <query>
+beet mm 'grouping-=:Video.+' grouping+=Kid <query>
 """
 
 
