@@ -190,7 +190,7 @@ class MultiValueModifyCliTest(PluginTestCase):
         beets.plugins._instances.clear()
         required_plugins = ("multivalue", "bareasc")
         beets.config["plugins"] = required_plugins
-        beets.plugins.load_plugins(required_plugins)
+        beets.plugins.load_plugins()
         beets.plugins.find_plugins()
 
         if field_type == "string":

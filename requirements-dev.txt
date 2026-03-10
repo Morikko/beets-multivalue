@@ -1,3 +1,5 @@
 responses>=0.3.0
 pytest==8.3.5
 parameterized==0.9.0
+# Needed for contract in tests https://github.com/beetbox/beets/pull/5887
+beets>=2.4.0
