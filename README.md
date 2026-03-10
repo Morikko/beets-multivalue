@@ -28,6 +28,7 @@ fields are:
 - albumartists_credit
 - mb_artistids
 - mb_albumartistids
+- genres (beets >=2.7)
 
 ## String multi-value tags
 

@@ -47,6 +47,7 @@ class MultiValuePlugin(BeetsPlugin):
         "albumartists_credit",
         "mb_artistids",
         "mb_albumartistids",
+        "genres",
     }
 
     def __init__(self):
