@@ -4,7 +4,15 @@ import mediafile
 from beets import dbcore, library, plugins, ui
 from beets.plugins import BeetsPlugin
 from beets.ui import Subcommand, UserError, decargs, print_
-from beets.ui.commands import _do_query, print_and_modify
+
+try:
+    # Old beets <2.6
+    from beets.ui.commands import _do_query as do_query
+    from beets.ui.commands import print_and_modify
+except ImportError:
+    from beets.ui.commands.utils import do_query
+    from beets.ui.commands.modify import print_and_modify
+
 from beets.util import functemplate
 
 SearchTuple = tuple[str, Type[dbcore.query.FieldQuery]]
@@ -287,7 +295,7 @@ class MultiValuePlugin(BeetsPlugin):
         model_cls = library.Album if album else library.Item
 
         # Get the items to modify.
-        items, albums = _do_query(lib, query, album, False)
+        items, albums = do_query(lib, query, album, False)
         objs = albums if album else items
 
         # Apply changes *temporarily*, preview them, and collect modified
