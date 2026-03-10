@@ -8,7 +8,7 @@ class MultiValueModifyCliTest(PluginTestCase):
     plugin = "multivalue"
 
     def enable_string_field(self, sep=","):
-        self.config["multivalue"]["string_fields"] = {"genre": sep}
+        self.config["multivalue"]["string_fields"] = {"grouping": sep}
 
     ##
     # Multi-value cases
@@ -79,61 +79,67 @@ class MultiValueModifyCliTest(PluginTestCase):
                 [],
             ),
             # string_add_value
-            ("string", "genre", "Classic", "genre+=Rock", "Classic,Rock"),
+            ("string", "grouping", "Classic", "grouping+=Rock", "Classic,Rock"),
             # string_remove_value
-            ("string", "genre", "Classic,Rock", "genre-=Rock", "Classic"),
-            ("string", "genre", "Rock,Classic,Rock", "genre-=Rock", "Classic"),
+            ("string", "grouping", "Classic,Rock", "grouping-=Rock", "Classic"),
+            ("string", "grouping", "Rock,Classic,Rock", "grouping-=Rock", "Classic"),
             # string_double_action
             (
                 "string",
-                "genre",
+                "grouping",
                 "Classic,Rock",
-                "genre-=Rock genre+=Blues-Chill",
+                "grouping-=Rock grouping+=Blues-Chill",
                 "Classic,Blues-Chill",
             ),
             # string_add_existing default is exact match
-            ("string", "genre", "Classic", "genre+=Classic", "Classic"),
-            ("string", "genre", "classic", "genre+=Classic", "classic,Classic"),
+            ("string", "grouping", "Classic", "grouping+=Classic", "Classic"),
+            ("string", "grouping", "classic", "grouping+=Classic", "classic,Classic"),
             # string_remove_no_match
-            ("string", "genre", "Classic", "genre-=Blues", "Classic"),
+            ("string", "grouping", "Classic", "grouping-=Blues", "Classic"),
             # string_remove_last
-            ("string", "genre", "Classic", "genre-=Classic", ""),
+            ("string", "grouping", "Classic", "grouping-=Classic", ""),
             # string_add_first_none
-            ("string", "genre", None, "genre+=Classic", "Classic"),
+            ("string", "grouping", None, "grouping+=Classic", "Classic"),
             # string_add_first_empty
-            ("string", "genre", "", "genre+=Classic", "Classic"),
+            ("string", "grouping", "", "grouping+=Classic", "Classic"),
             # string_add_match_insensitive
-            ("string", "genre", "Classic", "genre+=~Classic", "Classic"),
-            ("string", "genre", "classic", "genre+=~Classic", "classic"),
+            ("string", "grouping", "Classic", "grouping+=~Classic", "Classic"),
+            ("string", "grouping", "classic", "grouping+=~Classic", "classic"),
             # string_remove_match_insensitive
-            ("string", "genre", "Classic", "genre-=~Classic", ""),
-            ("string", "genre", "classic", "genre-=~Classic", ""),
+            ("string", "grouping", "Classic", "grouping-=~Classic", ""),
+            ("string", "grouping", "classic", "grouping-=~Classic", ""),
             # string_remove_match_regex
-            ("string", "genre", "Rock&Roll", "genre-=:Rock.*", ""),
+            ("string", "grouping", "Rock&Roll", "grouping-=:Rock.*", ""),
             # string_clean_regex_add
-            ("string", "genre", "Rock&Roll", "genre-=:Rock.* genre+=Rock", "Rock"),
+            (
+                "string",
+                "grouping",
+                "Rock&Roll",
+                "grouping-=:Rock.* grouping+=Rock",
+                "Rock",
+            ),
             # string_test_order
             (
                 "string",
-                "genre",
+                "grouping",
                 "original",
-                "genre+=base genre-=base genre=base,pivot",
+                "grouping+=base grouping-=base grouping=base,pivot",
                 "pivot,base",
             ),
             # string_reset
             (
                 "string",
-                "genre",
+                "grouping",
                 "original",
-                "genre+=new genre= genre+=new2",
+                "grouping+=new grouping= grouping+=new2",
                 "new,new2",
             ),
             # string_del_win
             (
                 "string",
-                "genre",
+                "grouping",
                 "original",
-                "genre! genre+=base genre-=base genre=base,pivot",
+                "grouping! grouping+=base grouping-=base grouping=base,pivot",
                 "",
             ),
         ]
@@ -169,9 +175,9 @@ class MultiValueModifyCliTest(PluginTestCase):
             ("list", "artists", ["Éric"], "artists+=#Èric", ["Éric"]),
             ("list", "artists", [], "artists+=#Èric", ["Èric"]),
             ("list", "artists", ["Éric"], "artists-=#Èric", []),
-            ("string", "genre", "Éric", "genre+=#Èric", "Éric"),
-            ("string", "genre", "", "genre+=#Èric", "Èric"),
-            ("string", "genre", "Éric", "genre-=#Èric", ""),
+            ("string", "grouping", "Éric", "grouping+=#Èric", "Éric"),
+            ("string", "grouping", "", "grouping+=#Èric", "Èric"),
+            ("string", "grouping", "Éric", "grouping-=#Èric", ""),
         ]
     )
     def test_multivalue_operations_plugin(
@@ -212,26 +218,26 @@ class MultiValueModifyCliTest(PluginTestCase):
     @parameterized.expand(
         [
             # comma_separator
-            (",", "Classic", "genre+=Rock", "Classic,Rock"),
+            (",", "Classic", "grouping+=Rock", "Classic,Rock"),
             # semicolon_separator
-            (";", "Classic", "genre+=Blues", "Classic;Blues"),
+            (";", "Classic", "grouping+=Blues", "Classic;Blues"),
             # pipe_separator
-            ("|", "Rock", "genre+=Pop", "Rock|Pop"),
+            ("|", "Rock", "grouping+=Pop", "Rock|Pop"),
         ]
     )
     def test_string_separators(self, separator, initial_value, command, expected_value):
         """Test different string field separators"""
         self.enable_string_field(separator)
-        item = self.add_item(genre=initial_value)
+        item = self.add_item(grouping=initial_value)
         self.run_command("multimodify", "-y", command)
         item.load()
-        assert item.genre == expected_value
+        assert item.grouping == expected_value
 
     def test_string_unset(self):
         with pytest.raises(
-            beets.ui.UserError, match=r"'genre' is not a declared multivalue field"
+            beets.ui.UserError, match=r"'grouping' is not a declared multivalue field"
         ):
-            self.run_command("multimodify", "-y", "genre+=Blues")
+            self.run_command("multimodify", "-y", "grouping+=Blues")
 
     @parameterized.expand(
         [
@@ -253,17 +259,17 @@ class MultiValueModifyCliTest(PluginTestCase):
         [
             # basic_field_assignment
             (
-                {"genre": "Rock", "grouping": "Old Artist"},
-                ["genre=Blues"],
-                {"genre": "Blues"},
-                {"grouping": "Old Artist"},
+                {"grouping": "Rock", "title": "Old Artist"},
+                ["grouping=Blues"],
+                {"grouping": "Blues"},
+                {"title": "Old Artist"},
             ),
             # multiple_field_assignments
             (
-                {"grouping": "Old Title", "genre": "Rock", "year": 2020},
-                ["grouping=New Title", "year=2023"],
-                {"grouping": "New Title", "year": 2023},
-                {"genre": "Rock"},
+                {"label": "Old Title", "grouping": "Rock", "year": 2020},
+                ["label=New Title", "year=2023"],
+                {"label": "New Title", "year": 2023},
+                {"grouping": "Rock"},
             ),
         ]
     )
@@ -295,7 +301,7 @@ class MultiValueModifyCliTest(PluginTestCase):
         item3 = self.add_item(artist="Artist A", title="Song 3")
 
         # Use multimodify command with query (should behave like modify)
-        self.run_command("multimodify", "-y", "artist:Artist A", "genre=Rock")
+        self.run_command("multimodify", "-y", "artist:Artist A", "grouping=Rock")
 
         # Reload items
         item1.load()
@@ -303,25 +309,25 @@ class MultiValueModifyCliTest(PluginTestCase):
         item3.load()
 
         # Only items matching the query should be modified
-        assert item1.genre == "Rock"
-        assert item2.genre == ""  # Should remain unchanged
-        assert item3.genre == "Rock"
+        assert item1.grouping == "Rock"
+        assert item2.grouping == ""  # Should remain unchanged
+        assert item3.grouping == "Rock"
 
     @parameterized.expand(
         [
             # single_field_deletion
             (
-                {"grouping": "Test Song", "genre": "Rock", "year": 2023},
-                "genre!",
-                {"genre": ""},
-                {"grouping": "Test Song", "year": 2023},
+                {"label": "Test Song", "grouping": "Rock", "year": 2023},
+                "grouping!",
+                {"grouping": ""},
+                {"label": "Test Song", "year": 2023},
             ),
             # multiple_field_deletions
             (
-                {"grouping": "Test Song", "genre": "Rock", "year": 2023},
-                "grouping! year!",
-                {"grouping": "", "year": 0},
-                {"genre": "Rock"},
+                {"label": "Test Song", "grouping": "Rock", "year": 2023},
+                "label! year!",
+                {"label": "", "year": 0},
+                {"grouping": "Rock"},
             ),
         ]
     )
@@ -347,16 +353,16 @@ class MultiValueModifyCliTest(PluginTestCase):
     def test_compatibility_with_modify_mixed_operations(self):
         """Test that multimodify command supports mixed operations like modify"""
         self.enable_string_field()
-        item = self.add_item(grouping="Old Artist", genre="Rock,Pop", year=2020)
+        item = self.add_item(label="Old Artist", grouping="Rock,Pop", year=2020)
 
         # Mix basic assignment, field deletion, and multimodify operations
         self.run_command(
-            "multimodify", "-y", "grouping=New Artist", "year!", "genre+=Jazz"
+            "multimodify", "-y", "label=New Artist", "year!", "grouping+=Jazz"
         )
         item.load()
-        assert item.grouping == "New Artist"
+        assert item.label == "New Artist"
         assert item.year == 0
-        assert item.genre == "Rock,Pop,Jazz"
+        assert item.grouping == "Rock,Pop,Jazz"
 
     @parameterized.expand(
         [
