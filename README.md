@@ -220,3 +220,7 @@ WARNING: As the `work` field was not saved to the file previously, by reading
 from the files, it may remove all the `work` fetched from Musicbrainz and only
 stored in the DB.
 
+# Changelog
+
+- 0.2.0: Add support for beets 2.4 to 2.7
+- 0.2.0: Initial version
