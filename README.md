@@ -222,5 +222,5 @@ stored in the DB.
 
 # Changelog
 
-- 0.2.0: Add support for beets 2.4 to 2.7
+- 0.3.0: Add support for beets 2.4 to 2.7
 - 0.2.0: Initial version

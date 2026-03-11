@@ -11,6 +11,11 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Morikko/beets-multivalue",
+    project_urls={
+        "Documentation": "https://github.com/Morikko/beets-multivalue?tab=readme-ov-file#multi-value-plugin",
+        "GitHub": "https://github.com/Morikko/beets-multivalue",
+        "Changelog": "https://github.com/Morikko/beets-multivalue?tab=readme-ov-file#changelog",
+    },
     packages=find_packages(),
     classifiers=[
         "Programming Language :: Python",
